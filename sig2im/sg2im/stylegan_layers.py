@@ -321,3 +321,54 @@ class Truncation(nn.Module):
         interp = torch.lerp(self.avg_latent, x, self.threshold)
         do_trunc = (torch.arange(x.size(1)) < self.max_layer).view(1, -1, 1).to(x.device)
         return torch.where(do_trunc, interp, x)
+
+class GMapping(nn.Module):
+
+    def __init__(self, input_dim=, input_channels=, num_conv=4, num_linear=4,layer_channels = [64, 128,256,512],hidden_units=512, 
+                 kernel_size = 3, output_size=512,learning_rate=0.01, activation='leakyrelu', use_wscale=True, **kwargs):
+
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.hidden_units = hidden_units
+        self.output_size = output_size
+        self.input_channels = input_channels
+        self.num_conv = num_conv
+        self.num_linear = num_linear
+        self.kernel_size = kernel_size
+
+        # Activation function.
+        act, gain = {'relu': (torch.relu, np.sqrt(2)),
+                     'leakyrelu': (nn.LeakyReLU(negative_slope=0.2), np.sqrt(2))}[activation]
+
+
+        layers = []
+        for layer_idx in range(num_conv):
+            if layer_idx == 0:
+                layers.append(EqualizedConv2d(input_channels = self.input_dim, output_channels = layer_channels[0],
+                                                     kernel_size = self.kernel_size, stride=1, gain=gain, lrmul=learning_rate))
+            else:
+                layers.append(EqualizedConv2d(input_channels = layer_channels[layer_id-1], output_channels = 
+                                          layer_channels[layer_idx], kernel_size = self.kernel_size, stride=1, gain=gain, 
+                                          lrmul=learning_rate))
+            layers.append(act)
+            layers.append(nn.MaxPool2d(2, stride=2, padding=0, dilation=1))
+        
+        layers.append(nn.Flatten())
+        linear_input = (self.input_dim/(2 ** num_conv) ** 2) * layer_channels[-1]
+                      
+        for layer_idx in range(num_linear):
+            if layer_idx == 0:
+                layers.append(EqualizedLinear(input_size = linear_input, output_size=hidden_units, gain=gain, 
+                                              lrmul=learning_rate))
+            else:
+                layers.append(EqualizedLinear(input_size= hidden_units, output_size=hidden_units, gain=gain, 
+                                              lrmul=learning_rate))
+            layers.append(act)
+        # Output.
+        self.map = nn.Sequential(layers)
+
+    def forward(self, x):
+        # First input: Latent vectors (Z) [mini_batch, latent_size].
+        x = self.map(x)
+        return x
