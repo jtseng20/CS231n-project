@@ -17,42 +17,37 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import sys
-sys.path.append('../..')
-from .StyleGAN.pytorch.models.CustomLayers import EqualizedLinear, StyleMod, NoiseLayer
+from stylegan_layers import *
 
-class LayerEpilogue(nn.Module):
+class StylishNorm(nn.Module):
     """Things to do at the end of each layer."""
 
-    def __init__(self, layout_dim, input_dim, output_dim, style_dim, 
-                 normalization, activation, use_noise, channels):
+    def __init__(self, channels, style_dim, activation):
         super().__init__()
         
         layers = []
-        if use_noise:
-            layers.append(('noise', NoiseLayer(channels)))
-        layers.append(('activation', activation_layer))
-        if normalization == 'pixel':
-            layers.append(('pixel_norm', PixelNormLayer()))
-        if normalization == 'instance':
-            layers.append(('instance_norm', nn.InstanceNorm2d(channels)))
-        self.top_epi = nn.Sequential(OrderedDict(layers))
+        layers.append(NoiseLayer(channels))
+        layers.append(get_activation(activation))
+        layers.append(nn.InstanceNorm2d(channels))
+        self.top_epi = nn.Sequential(layers)
 
-        self.style_mod = StyleMod(dlatent_size, channels, use_wscale=use_wscale)
+        self.style_mod = StyleMod(style_dim, channels, use_wscale=use_wscale)
 
     def forward(self, x, dlatents_in_slice=None):
+        """dlatents_in_slice is style."""
         x = self.top_epi(x)
-        if self.style_mod is not None:
-            x = self.style_mod(x, dlatents_in_slice)
-        else:
-            assert dlatents_in_slice is None
+        x = self.style_mod(x, dlatents_in_slice)
+        assert dlatents_in_slice is None
         return x
-
-def get_normalization_2d(channels, normalization):           
+    
+    
+def get_normalization_2d(channels, style_dim=None, activation='leakyrelu', normalization='stylish'):           
   if normalization == 'instance':
     return nn.InstanceNorm2d(channels)
   elif normalization == 'batch':
     return nn.BatchNorm2d(channels)
+  elif normalization == 'stylish':
+    return StylishNorm(channels, style_dim, activation)
   elif normalization == 'none':
     return None
   else:

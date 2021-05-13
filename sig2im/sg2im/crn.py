@@ -34,22 +34,23 @@ ICCV 2017
 
 class RefinementModule(nn.Module):
   def __init__(self, layout_dim, input_dim, output_dim,
-               normalization='instance', activation='leakyrelu'):
+               normalization='instance', activation='leakyrelu', style_dim=None):
     super(RefinementModule, self).__init__()
     
     layers = []
+    self.norm_levels = [1, 4]
     layers.append(nn.Conv2d(layout_dim + input_dim, output_dim,
                             kernel_size=3, padding=1))
-    layers.append(get_normalization_2d(output_dim, normalization))
+    layers.append(get_normalization_2d(output_dim, style_dim))
     layers.append(get_activation(activation))
     layers.append(nn.Conv2d(output_dim, output_dim, kernel_size=3, padding=1))
-    layers.append(get_normalization_2d(output_dim, normalization))
+    layers.append(get_normalization_2d(output_dim, style_dim))
     layers.append(get_activation(activation))
     layers = [layer for layer in layers if layer is not None]
     for layer in layers:
       if isinstance(layer, nn.Conv2d):
         nn.init.kaiming_normal_(layer.weight)
-    self.net = nn.Sequential(*layers)
+    self.layers = layers
 
   def forward(self, layout, feats, style=None):
     _, _, HH, WW = layout.size()
@@ -61,7 +62,12 @@ class RefinementModule(nn.Module):
       assert WW % factor == 0 and WW // factor == W
       layout = F.avg_pool2d(layout, kernel_size=factor, stride=factor)
     net_input = torch.cat([layout, feats], dim=1)
-    out = self.net(net_input)
+    out = net_input.clone()
+    for idx, layer in enumerate(self.layers):
+        if idx in self.norm_levels:
+            out = self.layer(net_input, style)
+        else:
+            out = self.layer(net_input)
     return out
 
 
@@ -110,6 +116,3 @@ class RefinementNetwork(nn.Module):
 
     out = self.output_conv(feats)
     return out
-
-
-
