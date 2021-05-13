@@ -17,9 +17,38 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import sys
+sys.path.append('../..')
+from .StyleGAN.pytorch.models.CustomLayers import EqualizedLinear, StyleMod, NoiseLayer
 
+class LayerEpilogue(nn.Module):
+    """Things to do at the end of each layer."""
 
-def get_normalization_2d(channels, normalization):
+    def __init__(self, layout_dim, input_dim, output_dim, style_dim, 
+                 normalization, activation, use_noise, channels):
+        super().__init__()
+        
+        layers = []
+        if use_noise:
+            layers.append(('noise', NoiseLayer(channels)))
+        layers.append(('activation', activation_layer))
+        if normalization == 'pixel':
+            layers.append(('pixel_norm', PixelNormLayer()))
+        if normalization == 'instance':
+            layers.append(('instance_norm', nn.InstanceNorm2d(channels)))
+        self.top_epi = nn.Sequential(OrderedDict(layers))
+
+        self.style_mod = StyleMod(dlatent_size, channels, use_wscale=use_wscale)
+
+    def forward(self, x, dlatents_in_slice=None):
+        x = self.top_epi(x)
+        if self.style_mod is not None:
+            x = self.style_mod(x, dlatents_in_slice)
+        else:
+            assert dlatents_in_slice is None
+        return x
+
+def get_normalization_2d(channels, normalization):           
   if normalization == 'instance':
     return nn.InstanceNorm2d(channels)
   elif normalization == 'batch':

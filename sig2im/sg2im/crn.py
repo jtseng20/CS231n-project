@@ -51,7 +51,7 @@ class RefinementModule(nn.Module):
         nn.init.kaiming_normal_(layer.weight)
     self.net = nn.Sequential(*layers)
 
-  def forward(self, layout, feats):
+  def forward(self, layout, feats, style=None):
     _, _, HH, WW = layout.size()
     _, _, H, W = feats.size()
     assert HH >= H
@@ -85,13 +85,14 @@ class RefinementNetwork(nn.Module):
     nn.init.kaiming_normal_(output_conv_layers[2].weight)
     self.output_conv = nn.Sequential(*output_conv_layers)
 
-  def forward(self, layout):
+  def forward(self, layout, style=None):
     """
     Output will have same size as layout
     """
     # H, W = self.output_size
     N, _, H, W = layout.size()
     self.layout = layout
+    self.style = style
 
     # Figure out size of input
     input_H, input_W = H, W
@@ -105,8 +106,10 @@ class RefinementNetwork(nn.Module):
     feats = torch.zeros(N, 1, input_H, input_W).to(layout)
     for mod in self.refinement_modules:
       feats = F.upsample(feats, scale_factor=2, mode='nearest')
-      feats = mod(layout, feats)
+      feats = mod(layout, feats, style)
 
     out = self.output_conv(feats)
     return out
+
+
 
