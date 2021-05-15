@@ -99,12 +99,6 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
             
     return model, style_losses
 
-
-def get_input_optimizer(input_img):
-    # this line to show that input is a parameter that requires a gradient
-    optimizer = optim.LBFGS([input_img.requires_grad_()])
-    return optimizer
-
 class StyleLossModule():
     def __init__(self, cnn, cnn_normalization_mean, cnn_normalization_std):
         self.model, self.style_losses = get_style_model_and_losses(cnn, cnn_normalization_mean, cnn_normalization_std)
