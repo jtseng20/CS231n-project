@@ -324,12 +324,13 @@ class Truncation(nn.Module):
 
 class GMapping(nn.Module):
 
-    def __init__(self, input_dim=, input_channels=, num_conv=4, num_linear=4,layer_channels = [64, 128,256,512],hidden_units=512, 
+    def __init__(self, input_dim=(64,64), input_channels=3, num_conv=4, num_linear=4,
+                 layer_channels = [64, 128,256,512],hidden_units=512, 
                  kernel_size = 3, output_size=512,learning_rate=0.01, activation='leakyrelu', use_wscale=True, **kwargs):
 
         super().__init__()
 
-        self.input_dim = input_dim
+        self.input_dim = input_dim[0]
         self.hidden_units = hidden_units
         self.output_size = output_size
         self.input_channels = input_channels

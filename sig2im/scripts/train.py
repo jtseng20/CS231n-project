@@ -39,6 +39,10 @@ from sg2im.model import Sg2ImModel
 from sg2im.utils import int_tuple, float_tuple, str_tuple
 from sg2im.utils import timeit, bool_flag, LossManager
 
+# Our stylegan implementation
+from sg2im.style_loss import StyleLossModule
+from sg2im.stylegan_layers import GMapping
+
 torch.backends.cudnn.benchmark = True
 
 VG_DIR = os.path.expanduser('datasets/vg')
@@ -325,7 +329,7 @@ def check_model(args, t, loader, model):
 
       # Run the model as it has been run during training
       model_masks = masks
-      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks)
+      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks, style_img=imgs)
       imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
 
       skip_pixel_loss = False
@@ -346,13 +350,13 @@ def check_model(args, t, loader, model):
     samples = {}
     samples['gt_img'] = imgs
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_img = imgs)
     samples['gt_box_gt_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_img = imgs)
     samples['gt_box_pred_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img)
+    model_out = model(objs, triples, obj_to_img, style_img = imgs)
     samples['pred_box_pred_mask'] = model_out[0]
 
     for k, v in samples.items():
@@ -417,8 +421,16 @@ def main(args):
   check_args(args)
   float_dtype = torch.cuda.FloatTensor
   long_dtype = torch.cuda.LongTensor
-
+    
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   vocab, train_loader, val_loader = build_loaders(args)
+    
+  # evaluating style 
+  cnn = models.vgg19(pretrained=True).features.to(device).eval()
+  cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
+  cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
+  style_loss_module = StyleLossModule(cnn, cnn_normalization_mean, cnn_normalization_std)
+  
   model, model_kwargs = build_model(args, vocab)
   model.type(float_dtype)
   print(model)
@@ -525,7 +537,7 @@ def main(args):
         model_boxes = boxes
         model_masks = masks
         model_out = model(objs, triples, obj_to_img,
-                          boxes_gt=model_boxes, masks_gt=model_masks)
+                          boxes_gt=model_boxes, masks_gt=model_masks, style_img=imgs)
         imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
       with timeit('loss', args.timing):
         # Skip the pixel loss if using GT boxes
@@ -548,12 +560,18 @@ def main(args):
         weight = args.discriminator_loss_weight * args.d_img_weight
         total_loss = add_loss(total_loss, gan_g_loss(scores_fake), losses,
                               'g_gan_img_loss', weight)
-
+        
+      # This is our loss function for the style
+      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred)
+      total_loss = add_loss(total_loss, style_loss_score, losses,
+                              'g_style_loss', weight=1)
+    
       losses['total_loss'] = total_loss.item()
       if not math.isfinite(losses['total_loss']):
         print('WARNING: Got loss = NaN, not backpropping')
         continue
-
+        
+      # TODO: add GMapping to optimizer
       optimizer.zero_grad()
       with timeit('backward', args.timing):
         total_loss.backward()

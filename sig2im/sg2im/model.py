@@ -24,6 +24,7 @@ from sg2im.graph import GraphTripleConv, GraphTripleConvNet
 from sg2im.crn import RefinementNetwork
 from sg2im.layout import boxes_to_layout, masks_to_layout
 from sg2im.layers import build_mlp
+from sg2im.stylegan_layers import GMapping
 
 
 class Sg2ImModel(nn.Module):
@@ -40,7 +41,10 @@ class Sg2ImModel(nn.Module):
     # vec_noise_dim, gconv_mode, box_anchor, decouple_obj_predictions
     if len(kwargs) > 0:
       print('WARNING: Model got unexpected kwargs ', kwargs)
-
+    
+    # TODO: initialize stylegan code
+    self.style_map = GMapping(input_dim=image_size, input_channels=3)
+    
     self.vocab = vocab
     self.image_size = image_size
     self.layout_noise_dim = layout_noise_dim
@@ -49,6 +53,7 @@ class Sg2ImModel(nn.Module):
     num_preds = len(vocab['pred_idx_to_name'])
     self.obj_embeddings = nn.Embedding(num_objs + 1, embedding_dim)
     self.pred_embeddings = nn.Embedding(num_preds, embedding_dim)
+    
 
     if gconv_num_layers == 0:
       self.gconv = nn.Linear(embedding_dim, gconv_dim)
@@ -106,7 +111,7 @@ class Sg2ImModel(nn.Module):
     return nn.Sequential(*layers)
 
   def forward(self, objs, triples, obj_to_img=None,
-              boxes_gt=None, masks_gt=None):
+              boxes_gt=None, masks_gt=None, style_img=None):
     """
     Required Inputs:
     - objs: LongTensor of shape (O,) giving categories for all objects
@@ -167,7 +172,9 @@ class Sg2ImModel(nn.Module):
       layout_noise = torch.randn(noise_shape, dtype=layout.dtype,
                                  device=layout.device)
       layout = torch.cat([layout, layout_noise], dim=1)
-    img = self.refinement_net(layout)
+    # creating latent encoding of the style
+    style_encoding = self.style_map(style_img)
+    img = self.refinement_net(layout, style=style_encoding)
     return img, boxes_pred, masks_pred, rel_scores
 
   def encode_scene_graphs(self, scene_graphs):
