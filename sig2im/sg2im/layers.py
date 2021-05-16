@@ -17,7 +17,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from stylegan_layers import *
+from sg2im.stylegan_layers import *
 
 class StylishNorm(nn.Module):
     """Things to do at the end of each layer."""
@@ -29,19 +29,18 @@ class StylishNorm(nn.Module):
         layers.append(NoiseLayer(channels))
         layers.append(get_activation(activation))
         layers.append(nn.InstanceNorm2d(channels))
-        self.top_epi = nn.Sequential(layers)
-
-        self.style_mod = StyleMod(style_dim, channels, use_wscale=use_wscale)
+        self.top_epi = nn.Sequential(*layers)
+        self.style_mod = StyleMod(style_dim, channels, use_wscale=True)
 
     def forward(self, x, dlatents_in_slice=None):
         """dlatents_in_slice is style."""
         x = self.top_epi(x)
         x = self.style_mod(x, dlatents_in_slice)
-        assert dlatents_in_slice is None
+        assert dlatents_in_slice is not None
         return x
     
     
-def get_normalization_2d(channels, style_dim=None, activation='leakyrelu', normalization='stylish'):           
+def get_normalization_2d(channels, normalization='stylish', activation='leakyrelu', style_dim=None):   
   if normalization == 'instance':
     return nn.InstanceNorm2d(channels)
   elif normalization == 'batch':

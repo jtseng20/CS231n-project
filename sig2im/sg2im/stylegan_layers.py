@@ -346,18 +346,17 @@ class GMapping(nn.Module):
         layers = []
         for layer_idx in range(num_conv):
             if layer_idx == 0:
-                layers.append(EqualizedConv2d(input_channels = self.input_dim, output_channels = layer_channels[0],
+                layers.append(EqualizedConv2d(input_channels = self.input_channels, output_channels = layer_channels[0],
                                                      kernel_size = self.kernel_size, stride=1, gain=gain, lrmul=learning_rate))
             else:
-                layers.append(EqualizedConv2d(input_channels = layer_channels[layer_id-1], output_channels = 
+                layers.append(EqualizedConv2d(input_channels = layer_channels[layer_idx-1], output_channels = 
                                           layer_channels[layer_idx], kernel_size = self.kernel_size, stride=1, gain=gain, 
                                           lrmul=learning_rate))
             layers.append(act)
             layers.append(nn.MaxPool2d(2, stride=2, padding=0, dilation=1))
         
         layers.append(nn.Flatten())
-        linear_input = (self.input_dim/(2 ** num_conv) ** 2) * layer_channels[-1]
-                      
+        linear_input = ((self.input_dim//(2 ** num_conv)) ** 2) * layer_channels[-1]
         for layer_idx in range(num_linear):
             if layer_idx == 0:
                 layers.append(EqualizedLinear(input_size = linear_input, output_size=hidden_units, gain=gain, 
@@ -367,7 +366,8 @@ class GMapping(nn.Module):
                                               lrmul=learning_rate))
             layers.append(act)
         # Output.
-        self.map = nn.Sequential(layers)
+        print(layers)
+        self.map = nn.Sequential(*layers)
 
     def forward(self, x):
         # First input: Latent vectors (Z) [mini_batch, latent_size].

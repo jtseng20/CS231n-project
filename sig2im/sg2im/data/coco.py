@@ -24,7 +24,9 @@ import torchvision.transforms as T
 import numpy as np
 import PIL
 from skimage.transform import resize as imresize
-import pycocotools.mask as mask_utils
+import sys
+sys.path.append('../..')
+import datasets.cocoapi.PythonAPI.pycocotools.mask as mask_utils
 
 from .utils import imagenet_preprocess, Resize
 

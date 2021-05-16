@@ -28,7 +28,10 @@ import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
+import torchvision.models as models
 
+import sys
+sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
 from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
 from sg2im.data.vg import VgSceneGraphDataset, vg_collate_fn
@@ -45,11 +48,11 @@ from sg2im.stylegan_layers import GMapping
 
 torch.backends.cudnn.benchmark = True
 
-VG_DIR = os.path.expanduser('datasets/vg')
+VG_DIR = os.path.expanduser('/vision2/u/helenav/datasets/vg')
 COCO_DIR = os.path.expanduser('datasets/coco')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default='coco', choices=['vg', 'coco'])
+parser.add_argument('--dataset', default='vg', choices=['vg', 'coco'])
 
 # Optimization hyperparameters
 parser.add_argument('--batch_size', default=32, type=int)
@@ -69,9 +72,9 @@ parser.add_argument('--include_relationships', default=True, type=bool_flag)
 
 # VG-specific options
 parser.add_argument('--vg_image_dir', default=os.path.join(VG_DIR, 'images'))
-parser.add_argument('--train_h5', default=os.path.join(VG_DIR, 'train.h5'))
-parser.add_argument('--val_h5', default=os.path.join(VG_DIR, 'val.h5'))
-parser.add_argument('--vocab_json', default=os.path.join(VG_DIR, 'vocab.json'))
+parser.add_argument('--train_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'train.h5'))
+parser.add_argument('--val_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'val.h5'))
+parser.add_argument('--vocab_json', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'vocab.json'))
 parser.add_argument('--max_objects_per_image', default=10, type=int)
 parser.add_argument('--vg_use_orphaned_objects', default=True, type=bool_flag)
 
@@ -429,6 +432,7 @@ def main(args):
   cnn = models.vgg19(pretrained=True).features.to(device).eval()
   cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
   cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
+  print("succcessfully sent the normalization mean and std to device")
   style_loss_module = StyleLossModule(cnn, cnn_normalization_mean, cnn_normalization_std)
   
   model, model_kwargs = build_model(args, vocab)

@@ -54,6 +54,8 @@ class Normalization(nn.Module):
 
 def get_style_model_and_losses(cnn, normalization_mean, normalization_std, 
                                style_layers=['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']):
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     cnn.eval()
 
@@ -93,7 +95,7 @@ def get_style_model_and_losses(cnn, normalization_mean, normalization_std,
             style_loss = StyleLoss()
             model.add_module("style_loss_{}".format(i), style_loss)
             style_losses.append(style_loss)
-            style_layers.pop(name)
+            style_layers.remove(name)
         if not style_layers:
             break
             
