@@ -105,7 +105,8 @@ class StyleLossModule():
     def __init__(self, cnn, cnn_normalization_mean, cnn_normalization_std):
         self.model, self.style_losses = get_style_model_and_losses(cnn, cnn_normalization_mean, cnn_normalization_std)
         
-    def get_style_score(self, style_img, input_img, style_weight=1000000):
+    def get_style_score(self, style_img, input_img, style_weight=1):
+        # previously style weight was 1,000,000. Now it's 1
         self.model(style_img)
         style_grams = [sl.gram.detach() for sl in self.style_losses]
         self.model(input_img)

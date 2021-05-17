@@ -126,11 +126,15 @@ class Sg2ImModel(nn.Module):
     - boxes_gt: FloatTensor of shape (O, 4) giving boxes to use for computing
       the spatial layout; if not given then use predicted boxes.
     """
+    device = torch.device('cuda:0')
+    objs = objs.to(device)
+    triples = triples.to(device)
+    
     O, T = objs.size(0), triples.size(0)
     s, p, o = triples.chunk(3, dim=1)           # All have shape (T, 1)
     s, p, o = [x.squeeze(1) for x in [s, p, o]] # Now have shape (T,)
     edges = torch.stack([s, o], dim=1)          # Shape is (T, 2)
-  
+
     if obj_to_img is None:
       obj_to_img = torch.zeros(O, dtype=objs.dtype, device=objs.device)
 
@@ -234,8 +238,8 @@ class Sg2ImModel(nn.Module):
     obj_to_img = torch.tensor(obj_to_img, dtype=torch.int64, device=device)
     return objs, triples, obj_to_img
 
-  def forward_json(self, scene_graphs):
+  def forward_json(self, scene_graphs, style_img=None):
     """ Convenience method that combines encode_scene_graphs and forward. """
     objs, triples, obj_to_img = self.encode_scene_graphs(scene_graphs)
-    return self.forward(objs, triples, obj_to_img)
+    return self.forward(objs, triples, obj_to_img, style_img=style_img)
 

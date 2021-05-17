@@ -18,18 +18,24 @@ import argparse, json, os
 
 from imageio import imwrite
 import torch
-
+import sys
+sys.path.append('./.')
 from sg2im.model import Sg2ImModel
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
+from PIL import Image
+import numpy as np
+from sg2im.data.utils import imagenet_preprocess, Resize
+import torchvision.transforms as T
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='sg2im-models/vg128.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/overfit/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
+parser.add_argument('--style_image', default='style_images/iStock-182344013.jpg')
 
 
 def main(args):
@@ -50,22 +56,48 @@ def main(args):
     if not torch.cuda.is_available():
       print('WARNING: CUDA not available; falling back to CPU')
       device = torch.device('cpu')
-
+        
   # Load the model, with a bit of care in case there are no GPUs
   map_location = 'cpu' if device == torch.device('cpu') else None
-  checkpoint = torch.load(args.checkpoint, map_location=map_location)
+  checkpoint = torch.load(args.checkpoint, map_location=map_location)    
+
   model = Sg2ImModel(**checkpoint['model_kwargs'])
   model.load_state_dict(checkpoint['model_state'])
   model.eval()
   model.to(device)
-
-  # Load the scene graphs
-  with open(args.scene_graphs_json, 'r') as f:
-    scene_graphs = json.load(f)
-
+  
+  overfit_mode = True
+  # Load the style image
+  if overfit_mode:
+    style_image = checkpoint['train_samples'][0]['gt_img'].float()
+    transform = [imagenet_preprocess()]
+    transform = T.Compose(transform)
+    objects = []
+    triples = []
+    style_images = []
+    for i in range(style_image.shape[0]):
+      style_images.append(transform(style_image[i].clone()))
+      objects.append(checkpoint['train_batch_data'][0]['objs'][i])
+      triples.append(checkpoint['train_batch_data'][0]['triples'][i])
+    style_image = torch.stack(style_images)
+    objects = torch.stack(objects)
+    triples = torch.stack(triples)
+  else:
+    style_image = Image.open(args.style_image)
+    with open(args.scene_graphs_json, 'r') as f:
+      scene_graphs = json.load(f)
+    transform = [Resize((64,64)), T.ToTensor(), imagenet_preprocess()]
+    transform = T.Compose(transform)
+    style_image = transform(style_image.convert('RGB')) 
+    style_image = torch.unsqueeze(style_image, 0)  
+  
+  style_image = style_image.to(device)
   # Run the model forward
   with torch.no_grad():
-    imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs)
+    if overfit_mode:
+      imgs, boxes_pred, masks_pred, _ = model.forward(objects, triples, style_img=style_image)
+    else:
+      imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_img=style_image)
   imgs = imagenet_deprocess_batch(imgs)
 
   # Save the generated images

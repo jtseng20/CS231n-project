@@ -141,7 +141,7 @@ parser.add_argument('--d_img_weight', default=1.0, type=float) # multiplied by d
 parser.add_argument('--print_every', default=10, type=int)
 parser.add_argument('--timing', default=False, type=bool_flag)
 parser.add_argument('--checkpoint_every', default=10000, type=int)
-parser.add_argument('--output_dir', default=os.getcwd())
+parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg')
 parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
