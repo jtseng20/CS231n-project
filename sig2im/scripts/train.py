@@ -191,6 +191,7 @@ def build_model(args, vocab):
       'activation': args.activation,
       'mask_size': args.mask_size,
       'layout_noise_dim': args.layout_noise_dim,
+      'num_stylish': 0
     }
     model = Sg2ImModel(**kwargs)
   return model, kwargs
@@ -566,7 +567,7 @@ def main(args):
                               'g_gan_img_loss', weight)
         
       # This is our loss function for the style
-      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred)
+      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred, style_weight=0)
       total_loss = add_loss(total_loss, style_loss_score, losses,
                               'g_style_loss', weight=1)
     

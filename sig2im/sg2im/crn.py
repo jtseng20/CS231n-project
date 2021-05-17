@@ -40,10 +40,10 @@ class RefinementModule(nn.Module):
     self.norm_levels = [1, 4]
     layers.append(nn.Conv2d(layout_dim + input_dim, output_dim,
                             kernel_size=3, padding=1))
-    layers.append(get_normalization_2d(output_dim, style_dim=style_dim))
+    layers.append(get_normalization_2d(output_dim, normalization=normalization, style_dim=style_dim))
     layers.append(get_activation(activation))
     layers.append(nn.Conv2d(output_dim, output_dim, kernel_size=3, padding=1))
-    layers.append(get_normalization_2d(output_dim, style_dim=style_dim))
+    layers.append(get_normalization_2d(output_dim, normalization=normalization, style_dim=style_dim))
     layers.append(get_activation(activation))
     layers = [layer.cuda() for layer in layers if layer is not None]
     for layer in layers:
@@ -71,11 +71,12 @@ class RefinementModule(nn.Module):
 
 
 class RefinementNetwork(nn.Module):
-  def __init__(self, dims, normalization='instance', activation='leakyrelu',style_dim=None):
+  def __init__(self, dims, normalization='instance', activation='leakyrelu', style_dim=None, num_stylish=2):
     super(RefinementNetwork, self).__init__()
     layout_dim = dims[0]
     self.refinement_modules = nn.ModuleList()
     for i in range(1, len(dims)):
+      normalization = 'stylish' if i <= num_stylish else 'instance'
       input_dim = 1 if i == 1 else dims[i - 1]
       output_dim = dims[i]
       mod = RefinementModule(layout_dim, input_dim, output_dim,
