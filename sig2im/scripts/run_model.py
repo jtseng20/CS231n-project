@@ -66,7 +66,7 @@ def main(args):
   model.eval()
   model.to(device)
   
-  overfit_mode = True
+  overfit_mode = False
   # Load the style image
   if overfit_mode:
     style_image = checkpoint['train_samples'][0]['gt_img'].float()

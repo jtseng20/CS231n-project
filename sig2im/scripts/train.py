@@ -146,6 +146,8 @@ parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
 
+# Style weight
+parser.add_argument('--style_weight', default=1, type=int)
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
   curr_loss = curr_loss * weight
@@ -569,7 +571,7 @@ def main(args):
       # This is our loss function for the style
       style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred, style_weight=0)
       total_loss = add_loss(total_loss, style_loss_score, losses,
-                              'g_style_loss', weight=1)
+                              'g_style_loss', weight=args.style_weight)
     
       losses['total_loss'] = total_loss.item()
       if not math.isfinite(losses['total_loss']):
