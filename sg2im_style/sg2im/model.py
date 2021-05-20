@@ -106,7 +106,7 @@ class Sg2ImModel(nn.Module):
     return nn.Sequential(*layers)
 
   def forward(self, objs, triples, obj_to_img=None,
-              boxes_gt=None, masks_gt=None):
+              boxes_gt=None, masks_gt=None, style_batch=None):
     """
     Required Inputs:
     - objs: LongTensor of shape (O,) giving categories for all objects
@@ -167,7 +167,7 @@ class Sg2ImModel(nn.Module):
       layout_noise = torch.randn(noise_shape, dtype=layout.dtype,
                                  device=layout.device)
       layout = torch.cat([layout, layout_noise], dim=1)
-    img = self.refinement_net(layout)
+    img = self.refinement_net(layout, style_batch=style_batch)
     return img, boxes_pred, masks_pred, rel_scores
 
   def encode_scene_graphs(self, scene_graphs):

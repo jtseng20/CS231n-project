@@ -29,8 +29,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+import sys
+sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
-from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
+#from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
 from sg2im.data.vg import VgSceneGraphDataset, vg_collate_fn
 from sg2im.discriminators import PatchDiscriminator, AcCropDiscriminator
 from sg2im.losses import get_gan_losses
@@ -41,11 +43,11 @@ from sg2im.utils import timeit, bool_flag, LossManager
 
 torch.backends.cudnn.benchmark = True
 
-VG_DIR = os.path.expanduser('datasets/vg')
+VG_DIR = os.path.expanduser('/vision2/u/helenav/datasets/vg')
 COCO_DIR = os.path.expanduser('datasets/coco')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', default='coco', choices=['vg', 'coco'])
+parser.add_argument('--dataset', default='vg', choices=['vg', 'coco'])
 
 # Optimization hyperparameters
 parser.add_argument('--batch_size', default=32, type=int)
@@ -65,9 +67,9 @@ parser.add_argument('--include_relationships', default=True, type=bool_flag)
 
 # VG-specific options
 parser.add_argument('--vg_image_dir', default=os.path.join(VG_DIR, 'images'))
-parser.add_argument('--train_h5', default=os.path.join(VG_DIR, 'train.h5'))
-parser.add_argument('--val_h5', default=os.path.join(VG_DIR, 'val.h5'))
-parser.add_argument('--vocab_json', default=os.path.join(VG_DIR, 'vocab.json'))
+parser.add_argument('--train_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'train.h5'))
+parser.add_argument('--val_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'val.h5'))
+parser.add_argument('--vocab_json', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'vocab.json'))
 parser.add_argument('--max_objects_per_image', default=10, type=int)
 parser.add_argument('--vg_use_orphaned_objects', default=True, type=bool_flag)
 
@@ -134,7 +136,7 @@ parser.add_argument('--d_img_weight', default=1.0, type=float) # multiplied by d
 parser.add_argument('--print_every', default=10, type=int)
 parser.add_argument('--timing', default=False, type=bool_flag)
 parser.add_argument('--checkpoint_every', default=10000, type=int)
-parser.add_argument('--output_dir', default=os.getcwd())
+parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg/style_noise')
 parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
@@ -422,7 +424,7 @@ def main(args):
   model, model_kwargs = build_model(args, vocab)
   model.type(float_dtype)
   print(model)
-
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
   optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
   obj_discriminator, d_obj_kwargs = build_obj_discriminator(args, vocab)
@@ -520,12 +522,14 @@ def main(args):
       else:
         assert False
       predicates = triples[:, 1]
+      # TO DO !!!! ACTUALLY HAVE A STYLE_BATCH
+      style_batch = torch.randint(0,4, (imgs.shape[0],)).to(device)
 
       with timeit('forward', args.timing):
         model_boxes = boxes
         model_masks = masks
         model_out = model(objs, triples, obj_to_img,
-                          boxes_gt=model_boxes, masks_gt=model_masks)
+                          boxes_gt=model_boxes, masks_gt=model_masks, style_batch=style_batch)
         imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
       with timeit('loss', args.timing):
         # Skip the pixel loss if using GT boxes
