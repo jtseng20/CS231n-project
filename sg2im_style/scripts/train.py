@@ -33,7 +33,7 @@ import sys
 sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
 #from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
-from sg2im.data.vg import VgSceneGraphDataset, vg_collate_fn
+from sg2im.data.vg_style import VgSceneGraphDataset, vg_collate_fn
 from sg2im.discriminators import PatchDiscriminator, AcCropDiscriminator
 from sg2im.losses import get_gan_losses
 from sg2im.metrics import jaccard
@@ -141,6 +141,7 @@ parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
 
+parser.add_argument('--stylized_dir', default='stylized_images/)
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
   curr_loss = curr_loss * weight
@@ -262,10 +263,16 @@ def build_coco_dsets(args):
 
   return vocab, train_dset, val_dset
 
-
 def build_vg_dsets(args):
   with open(args.vocab_json, 'r') as f:
     vocab = json.load(f)
+                    
+  # TODO: Modify these two args to match
+  # id for the style, will be passed to model
+  style_ids = [0]
+  # names of styles (stylized image should be named <vg_image_without_extension>_<style_name>.jpg)
+  style_names = ['style_0']
+  
   dset_kwargs = {
     'vocab': vocab,
     'h5_path': args.train_h5,
@@ -275,6 +282,9 @@ def build_vg_dsets(args):
     'max_objects': args.max_objects_per_image,
     'use_orphaned_objects': args.vg_use_orphaned_objects,
     'include_relationships': args.include_relationships,
+    'stylized_dir': args.stylized_dir, 
+    'style_ids': style_ids,
+    'style_names': style_names,
   }
   train_dset = VgSceneGraphDataset(**dset_kwargs)
   iter_per_epoch = len(train_dset) // args.batch_size
@@ -320,15 +330,15 @@ def check_model(args, t, loader, model):
       batch = [tensor.cuda() for tensor in batch]
       masks = None
       if len(batch) == 6:
-        imgs, objs, boxes, triples, obj_to_img, triple_to_img = batch
+        imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
       elif len(batch) == 7:
-        imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+        imgs, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       predicates = triples[:, 1] 
 
       # Run the model as it has been run during training
       model_masks = masks
       model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks)
-      imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
+      imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
 
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
@@ -515,10 +525,10 @@ def main(args):
       t += 1
       batch = [tensor.cuda() for tensor in batch]
       masks = None
-      if len(batch) == 6:
-        imgs, objs, boxes, triples, obj_to_img, triple_to_img = batch
-      elif len(batch) == 7:
-        imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+      if len(batch) == 7:
+        imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
+      elif len(batch) == 8:
+        imgs, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       else:
         assert False
       predicates = triples[:, 1]

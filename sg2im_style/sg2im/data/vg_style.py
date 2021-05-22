@@ -30,15 +30,16 @@ from .utils import imagenet_preprocess, Resize
 
 
 class VgSceneGraphDataset(Dataset):
-  def __init__(self, vocab, h5_path, image_dir, style_dir, style_names, image_size=(256, 256),
+  def __init__(self, vocab, h5_path, image_dir, stylized_dir, style_ids, style_names, image_size=(256, 256),
                normalize_images=True, max_objects=10, max_samples=None,
                include_relationships=True, use_orphaned_objects=True):
     super(VgSceneGraphDataset, self).__init__()
 
-    self.style_paths = [os.path.join(style_dir, name) for name in style_names]
-    self.num_styles = len(style_paths)
-    for style_path in style_paths:
-        assert(os.path.exists(style_path))
+    self.stylized_dir = stylized_dir
+    self.num_styles = len(style_ids)
+    self.style_ids = style_ids
+    self.style_names = style_names
+    assert len(self.style_names) == self.num_styles
     
     self.image_dir = image_dir
     self.image_size = image_size
@@ -78,15 +79,15 @@ class VgSceneGraphDataset(Dataset):
     - triples: LongTensor of shape (T, 3) where triples[t] = [i, p, j]
       means that (objs[i], p, objs[j]) is a triple.
     """
-    style_index = index % num_styles
-    index = index // num_styles
+    style_index = index % self.num_styles
+    index = index // self.num_styles
     
     img_path = os.path.join(self.image_dir, self.image_paths[index])
 
     with open(img_path, 'rb') as f:
       with PIL.Image.open(f) as image:
         WW, HH = image.size
-        # image = self.transform(image.convert('RGB'))
+        image = self.transform(image.convert('RGB'))
 
     H, W = self.image_size
 
@@ -147,11 +148,18 @@ class VgSceneGraphDataset(Dataset):
 
     triples = torch.LongTensor(triples)
     
-    with open(self.style_paths[style_index], 'rb') as f:
-      with PIL.Image.open(f) as style_image:
-        style_image = self.transform(style_image.convert('RGB'))
+    image_name = os.path.splitext(os.path.split(self.image_paths[index])[1])[0]
+    style_name = self.style_names[style_index]
+    # style_name = os.path.splitext(os.path.split(style_name)[1])[0]
+    stylized_name = f"{image_name}_{style_name}.jpg"
+    stylized_path = os.path.join(self.stylized_dir, stylized_path)
+    with open(stylized_path, 'rb') as f:
+      with PIL.Image.open(f) as stylized_image:
+        stylized_image = self.transform(stylized_image.convert('RGB'))
+        
+    style_id = torch.LongTensor(self.style_ids[style_index])
     
-    return style_image, objs, boxes, triples
+    return stylized_image, style_id, objs, boxes, triples
 
 
 def vg_collate_fn(batch):
