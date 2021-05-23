@@ -334,12 +334,14 @@ def check_model(args, t, loader, model):
       elif len(batch) == 7:
         imgs, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       predicates = triples[:, 1] 
-
+      device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+      # TO DO !!!! ACTUALLY HAVE A STYLE_BATCH
+      style_batch = torch.randint(0,4, (imgs.shape[0],)).to(device)
+        
       # Run the model as it has been run during training
       model_masks = masks
       model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks)
       imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
-
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
                                 args, skip_pixel_loss, model, imgs, imgs_pred,
@@ -358,13 +360,13 @@ def check_model(args, t, loader, model):
     samples = {}
     samples['gt_img'] = imgs
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_batch)
     samples['gt_box_gt_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_batch=style_batch)
     samples['gt_box_pred_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img)
+    model_out = model(objs, triples, obj_to_img, style_batch=style_batch)
     samples['pred_box_pred_mask'] = model_out[0]
 
     for k, v in samples.items():
