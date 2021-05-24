@@ -76,7 +76,7 @@ class RefinementNetwork(nn.Module):
     layout_dim = dims[0]
     self.refinement_modules = nn.ModuleList()
     for i in range(1, len(dims)):
-      normalization = 'stylish' if i <= num_stylish else 'instance'
+      normalization = 'stylish' #if i <= num_stylish else 'instance'
       input_dim = 1 if i == 1 else dims[i - 1]
       output_dim = dims[i]
       mod = RefinementModule(layout_dim, input_dim, output_dim,

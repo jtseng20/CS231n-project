@@ -19,6 +19,7 @@ from torch.utils.data import Dataset
 import h5py
 from PIL import Image
 import glob
+from collections import Counter
 
 def check_paths(args):
     try:
@@ -51,6 +52,7 @@ def train(args):
     
     style_image = [f for f in os.listdir(args.style_image)]
     style_num = len(style_image)
+    print(style_image)
     print(style_num)
 
     transformer = TransformerNet(style_num=style_num).to(device)
@@ -145,28 +147,48 @@ def train(args):
 
 def stylize(args):
     device = torch.device("cuda" if args.cuda else "cpu")
-    content_images_path = args.content_image
-    output_images_path = args.output_image
+    content_images_path = args.content_image + "/"
+    output_images_path = args.output_image + "/"
     num_images = 0
-    for filename in glob.glob(content_images_path + '/*.jpg'):
+    style_model = TransformerNet(style_num=args.style_num)
+    state_dict = torch.load(args.model)
+    style_model.load_state_dict(state_dict)
+    style_model.to(device)
+    # glob.glob(content_images_path + '/*.jpg')
+    output_filenames = Counter([f.split("_")[0] + ".jpg" for f in os.listdir(output_images_path)])
+    content_filenames = []
+    for filename in os.listdir(content_images_path):
+        if filename in output_filenames and output_filenames[filename] == args.style_num:
+            num_images += 1
+            continue
+        elif filename in output_filenames and output_filenames[filename] < args.style_num:
+            content_filenames.insert(0, content_images_path + filename)
+        content_filenames.append(content_images_path + filename)
+        
+    print(content_filenames)
+    print("Preprocessing...")
+    for filename in content_filenames:
         num_images +=1
+        print(num_images)
         if num_images > 3334:
             break
-        for style_id in range(args.style_num):
-            content_image = utils.load_image(filename, scale=args.content_scale)
-            content_transform = transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Lambda(lambda x: x.mul(255))
+        content_image = utils.load_image(filename, scale=args.content_scale)
+        content_transform = transforms.Compose([
+                    transforms.ToTensor(),
+                    transforms.Lambda(lambda x: x.mul(255))
             ])
-            content_image = content_transform(content_image)
-            content_image = content_image.unsqueeze(0).to(device)
+        content_image = content_transform(content_image)
+        
+        if content_image.shape[-3] != 3:
+            num_images -=1
+            print("Faulty image..." + filename)
+            continue
+            
+        content_image = content_image.unsqueeze(0).to(device)
+        for style_id in range(args.style_num):
             with torch.no_grad():
-                style_model = TransformerNet(style_num=args.style_num)
-                state_dict = torch.load(args.model)
-                style_model.load_state_dict(state_dict)
-                style_model.to(device)
                 output = style_model(content_image, style_id = [style_id]).cpu()
-            utils.save_image(output_images_path + "/" +filename[filename.rfind("/")+1:-4]+'_style'+str(style_id)+'.jpg', output[0])
+            utils.save_image(output_images_path +filename[filename.rfind("/")+1:-4]+'_style'+str(style_id)+'.jpg', output[0])
 
 def main():
     main_arg_parser = argparse.ArgumentParser(description="parser for fast-neural-style")

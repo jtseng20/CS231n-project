@@ -30,7 +30,7 @@ import torchvision.transforms as T
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/overfit/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_weight_100/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
@@ -59,10 +59,12 @@ def main(args):
         
   # Load the model, with a bit of care in case there are no GPUs
   map_location = 'cpu' if device == torch.device('cpu') else None
-  checkpoint = torch.load(args.checkpoint, map_location=map_location)    
+  checkpoint = torch.load(args.checkpoint, map_location=map_location)   
 
+  checkpoint['model_kwargs']['num_stylish'] = 0
   model = Sg2ImModel(**checkpoint['model_kwargs'])
   model.load_state_dict(checkpoint['model_state'])
+  print(model)
   model.eval()
   model.to(device)
   
