@@ -18,14 +18,15 @@ import argparse, json, os
 
 from imageio import imwrite
 import torch
-
+import sys
+sys.path.append('./.')
 from sg2im.model import Sg2ImModel
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='sg2im-models/vg128.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_noise/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
@@ -59,13 +60,17 @@ def main(args):
   model.eval()
   model.to(device)
 
+  # TO DO !!!! ACTUALLY HAVE A STYLE_BATCH
+  style_batch = torch.tensor([1, 1, 1, 1, 1, 1, 1]).to(device)
+  print(style_batch.shape)
+
   # Load the scene graphs
   with open(args.scene_graphs_json, 'r') as f:
     scene_graphs = json.load(f)
 
   # Run the model forward
   with torch.no_grad():
-    imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs)
+    imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_batch=style_batch)
   imgs = imagenet_deprocess_batch(imgs)
 
   # Save the generated images

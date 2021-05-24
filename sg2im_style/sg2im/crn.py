@@ -91,7 +91,7 @@ class RefinementNetwork(nn.Module):
     self.style_num  = 4
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     self.style_dict = torch.rand((self.style_num, 1, 4, 4)).to(device)
-    assert torch.sum(self.style_dict) - 31.9840 < 1e-5
+    # assert torch.sum(self.style_dict) - 31.9840 < 1e-5
     
   def forward(self, layout, style_batch=None):
     """
@@ -102,7 +102,6 @@ class RefinementNetwork(nn.Module):
     # H, W = self.output_size
     N, _, H, W = layout.size()
     self.layout = layout
-
     # Figure out size of input
     input_H, input_W = H, W
     for _ in range(len(self.refinement_modules)):
