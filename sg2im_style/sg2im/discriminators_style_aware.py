@@ -80,7 +80,7 @@ class StyleAwareAcCropDiscriminator(nn.Module):
                object_size=64, padding='same', pooling='avg'):
     super(AcCropDiscriminator, self).__init__()
     self.vocab = vocab
-    self.discriminator = AcDiscriminator(vocab, arch, normalization,
+    self.discriminator = StyleAwareAcDiscriminator(vocab, arch, normalization,
                                          activation, padding, pooling)
     self.object_size = object_size
 

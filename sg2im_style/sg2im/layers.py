@@ -111,7 +111,7 @@ class styleAwareSequential(torch.nn.Module):
     # 2 arguments instead of 1 correctly
     out = x.detach().clone()
     for layer in self.layers:
-      if isinstance(layer, conditionalInstanceNorm2d) or isinstance(styleAwareSequential):
+      if isinstance(layer, (conditionalInstanceNorm2d, styleAwareSequential)):
         out = layer(out, style_batch)
       else:
         out = layer(out)
@@ -138,7 +138,7 @@ class ResidualBlock(nn.Module):
     layers = [layer for layer in layers if layer is not None]
     for layer in layers:
       _init_conv(layer, method=init)
-    self.net = nn.Sequential(*layers) # TODO: replace with styleAwareSequential? if normalization == 'conditional' else ...
+    self.net = nn.Sequential(*layers) if normalization != "conditional" else styleAwareSequential(*layers)
 
   def forward(self, x):
     P = self.padding
@@ -242,7 +242,7 @@ def build_cnn(arch, normalization='batch', activation='relu', padding='same',
   layers = [layer for layer in layers if layer is not None]
   for layer in layers:
     print(layer)
-  return nn.Sequential(*layers), cur_C  # TODO: replace with styleAwareSequential? if normalization == 'conditional' else ...
+  return nn.Sequential(*layers) if normalization != "conditional" else styleAwareSequential(*layers), cur_C
 
 
 def build_mlp(dim_list, activation='relu', batch_norm='none',
