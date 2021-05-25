@@ -19,17 +19,18 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def get_normalization_2d(channels, normalization):
+def get_normalization_2d(channels, normalization, style_count=30):
   if normalization == 'instance':
     return nn.InstanceNorm2d(channels)
   elif normalization == 'batch':
     return nn.BatchNorm2d(channels)
+  elif normalization == 'conditional':
+    return conditionalInstanceNorm2d(channels, style_count)
   elif normalization == 'none':
     return None
   else:
     raise ValueError('Unrecognized normalization type "%s"' % normalization)
-
-
+  
 def get_activation(name):
   kwargs = {}
   if name.lower().startswith('leakyrelu'):
@@ -44,8 +45,6 @@ def get_activation(name):
   if name.lower() not in activations:
     raise ValueError('Invalid activation "%s"' % name)
   return activations[name.lower()](**kwargs)
-
-
 
 
 def _init_conv(layer, method):
@@ -86,6 +85,39 @@ class GlobalAvgPool(nn.Module):
     return x.view(N, C, -1).mean(dim=2)
 
 
+class conditionalInstanceNorm2d(torch.nn.Module):
+  def __init__(self, channels, style_count=30):
+    super(conditionalInstanceNorm2d, self).__init__()
+    self.layers = torch.nn.ModuleList([torch.nn.InstanceNorm2d(channels, affine=True) for i in range(style_count)])
+
+  def forward(self, x, style_batch):
+    # Given:
+    #  - x (N, C, H, W) 
+    #  - style_batch (N,)
+    # Return z where each entry is the entry of x forwarded through the 
+    # layer indicated by its corresponding entry in style_batch
+    out = torch.stack([self.layers[style_batch[i]](x[i].unsqueeze(0)).squeeze_(0) for i in range(len(style_batch))])
+    return out
+
+
+class styleAwareSequential(torch.nn.Module):
+  def __init__(self, *args):
+    # Takes a sequence of layers, like Sequential and stores it for computation
+    super(styleAwareSequential, self).__init__()
+    self.layers = nn.ModuleList(list(args))
+  def forward(self, x, style_batch):
+    # Acts as a sequential, but every time it encounters a conditional norm,
+    # or *another* styleAwareSequential?!, it passes along
+    # 2 arguments instead of 1 correctly
+    out = x.detach().clone()
+    for layer in self.layers:
+      if isinstance(layer, conditionalInstanceNorm2d) or isinstance(styleAwareSequential):
+        out = layer(out, style_batch)
+      else:
+        out = layer(out)
+    return out
+
+
 class ResidualBlock(nn.Module):
   def __init__(self, channels, normalization='batch', activation='relu',
                padding='same', kernel_size=3, init='default'):
@@ -106,7 +138,7 @@ class ResidualBlock(nn.Module):
     layers = [layer for layer in layers if layer is not None]
     for layer in layers:
       _init_conv(layer, method=init)
-    self.net = nn.Sequential(*layers)
+    self.net = nn.Sequential(*layers) # TODO: replace with styleAwareSequential? if normalization == 'conditional' else ...
 
   def forward(self, x):
     P = self.padding
@@ -148,7 +180,7 @@ def build_cnn(arch, normalization='batch', activation='relu', padding='same',
   - FC-X-Y: Flatten followed by fully-connected layer
 
   Returns a tuple of:
-  - cnn: An nn.Sequential
+  - cnn: An nn.Sequential or styleAwareSequential
   - channels: Number of output channels
   """
   if isinstance(arch, str):
@@ -210,7 +242,7 @@ def build_cnn(arch, normalization='batch', activation='relu', padding='same',
   layers = [layer for layer in layers if layer is not None]
   for layer in layers:
     print(layer)
-  return nn.Sequential(*layers), cur_C
+  return nn.Sequential(*layers), cur_C  # TODO: replace with styleAwareSequential? if normalization == 'conditional' else ...
 
 
 def build_mlp(dim_list, activation='relu', batch_norm='none',

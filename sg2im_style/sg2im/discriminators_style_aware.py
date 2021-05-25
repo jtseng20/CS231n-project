@@ -19,11 +19,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from sg2im.bilinear import crop_bbox_batch
-from sg2im.layers import GlobalAvgPool, Flatten, get_activation, build_cnn
+from sg2im.layers import GlobalAvgPool, Flatten, get_activation, build_cnn, styleAwareSequential
 
 
-class PatchDiscriminator(nn.Module):
-  def __init__(self, arch, normalization='batch', activation='leakyrelu-0.2',
+class StyleAwarePatchDiscriminator(nn.Module):
+  def __init__(self, arch, normalization='conditional', activation='leakyrelu-0.2',
                padding='same', pooling='avg', input_size=(128,128),
                layout_dim=0):
     super(PatchDiscriminator, self).__init__()
@@ -39,13 +39,13 @@ class PatchDiscriminator(nn.Module):
     self.cnn, output_dim = build_cnn(**cnn_kwargs)
     self.classifier = nn.Conv2d(output_dim, 1, kernel_size=1, stride=1) # TODO: is this thing ever used? Try commenting it out.
 
-  def forward(self, x, layout=None):
+  def forward(self, x, style_batch, layout=None):
     if layout is not None:
       x = torch.cat([x, layout], dim=1)
-    return self.cnn(x)
+    return self.cnn(x, style_batch)
 
 
-class AcDiscriminator(nn.Module):
+class StyleAwareAcDiscriminator(nn.Module):
   def __init__(self, vocab, arch, normalization='none', activation='relu',
                padding='same', pooling='avg'):
     super(AcDiscriminator, self).__init__()
@@ -59,24 +59,24 @@ class AcDiscriminator(nn.Module):
       'padding': padding,
     }
     cnn, D = build_cnn(**cnn_kwargs)
-    self.cnn = nn.Sequential(cnn, GlobalAvgPool(), nn.Linear(D, 1024))
+    self.cnn = styleAwareSequential(cnn, GlobalAvgPool(), nn.Linear(D, 1024))
     num_objects = len(vocab['object_idx_to_name'])
 
     self.real_classifier = nn.Linear(1024, 1)
     self.obj_classifier = nn.Linear(1024, num_objects)
 
-  def forward(self, x, y):
+  def forward(self, x, y, style_batch):
     if x.dim() == 3:
       x = x[:, None]
-    vecs = self.cnn(x)
+    vecs = self.cnn(x, style_batch)
     real_scores = self.real_classifier(vecs)
     obj_scores = self.obj_classifier(vecs)
     ac_loss = F.cross_entropy(obj_scores, y)
     return real_scores, ac_loss
 
 
-class AcCropDiscriminator(nn.Module):
-  def __init__(self, vocab, arch, normalization='none', activation='relu',
+class StyleAwareAcCropDiscriminator(nn.Module):
+  def __init__(self, vocab, arch, normalization='conditional', activation='relu',
                object_size=64, padding='same', pooling='avg'):
     super(AcCropDiscriminator, self).__init__()
     self.vocab = vocab
@@ -84,7 +84,7 @@ class AcCropDiscriminator(nn.Module):
                                          activation, padding, pooling)
     self.object_size = object_size
 
-  def forward(self, imgs, objs, boxes, obj_to_img):
+  def forward(self, imgs, objs, boxes, obj_to_img, style_batch):
     crops = crop_bbox_batch(imgs, boxes, obj_to_img, self.object_size)
-    real_scores, ac_loss = self.discriminator(crops, objs)
+    real_scores, ac_loss = self.discriminator(crops, objs, style_batch)
     return real_scores, ac_loss
