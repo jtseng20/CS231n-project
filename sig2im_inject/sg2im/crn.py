@@ -49,7 +49,7 @@ class RefinementModule(nn.Module):
     for layer in layers:
       if isinstance(layer, nn.Conv2d):
         nn.init.kaiming_normal_(layer.weight)
-    self.layers = layers
+    self.layers = nn.ModuleList(layers)
 
   def forward(self, layout, feats, style=None):
     _, _, HH, WW = layout.size()
