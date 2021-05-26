@@ -30,16 +30,10 @@ from .utils import imagenet_preprocess, Resize
 
 
 class VgSceneGraphDataset(Dataset):
-  def __init__(self, vocab, h5_path, image_dir, stylized_dir, style_ids, style_names, image_size=(256, 256),
+  def __init__(self, vocab, h5_path, image_dir, stylized_dir, image_size=(256, 256),
                normalize_images=True, max_objects=10, max_samples=None,
                include_relationships=True, use_orphaned_objects=True):
     super(VgSceneGraphDataset, self).__init__()
-
-    self.stylized_dir = stylized_dir
-    self.num_styles = len(style_ids)
-    self.style_ids = style_ids
-    self.style_names = style_names
-    assert len(self.style_names) == self.num_styles
     
     self.image_dir = image_dir
     self.image_size = image_size
@@ -62,6 +56,9 @@ class VgSceneGraphDataset(Dataset):
           self.image_paths = list(v)
         else:
           self.data[k] = torch.IntTensor(np.asarray(v))
+    
+    self.stylized_dir = stylized_dir
+    self.num_styles = self.data['style_ids'].size(0)
 
   def __len__(self):
     num = self.data['object_names'].size(0)
@@ -148,16 +145,12 @@ class VgSceneGraphDataset(Dataset):
 
     triples = torch.LongTensor(triples)
     
-    image_name = os.path.splitext(os.path.split(self.image_paths[index])[1])[0]
-    style_name = self.style_names[style_index]
-    # style_name = os.path.splitext(os.path.split(style_name)[1])[0]
-    stylized_name = f"{image_name}_{style_name}.jpg"
-    stylized_path = os.path.join(self.stylized_dir, stylized_path)
+    style_id = self.data['style_ids'][style_index]
+    stylized_file = f"{self.data['image_ids'][style_index]}_style{style_id}.jpg"
+    stylized_path = os.path.join(self.stylized_dir, stylized_file)
     with open(stylized_path, 'rb') as f:
       with PIL.Image.open(f) as stylized_image:
         stylized_image = self.transform(stylized_image.convert('RGB'))
-        
-    style_id = torch.LongTensor(self.style_ids[style_index])
     
     return stylized_image, style_id, objs, boxes, triples
 
