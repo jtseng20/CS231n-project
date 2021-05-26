@@ -171,11 +171,12 @@ def vg_collate_fn(batch):
     triple_to_img[t] = n means that triples[t] belongs to imgs[n].
   """
   # batch is a list, and each element is (image, objs, boxes, triples) 
-  all_imgs, all_objs, all_boxes, all_triples = [], [], [], []
+  all_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
-  for i, (img, objs, boxes, triples) in enumerate(batch):
+  for i, (img, style_id, objs, boxes, triples) in enumerate(batch):
     all_imgs.append(img[None])
+    all_ids.append(style_id)
     O, T = objs.size(0), triples.size(0)
     all_objs.append(objs)
     all_boxes.append(boxes)
@@ -189,13 +190,14 @@ def vg_collate_fn(batch):
     obj_offset += O
 
   all_imgs = torch.cat(all_imgs)
+  all_ids = torch.cat(all_ids)
   all_objs = torch.cat(all_objs)
   all_boxes = torch.cat(all_boxes)
   all_triples = torch.cat(all_triples)
   all_obj_to_img = torch.cat(all_obj_to_img)
   all_triple_to_img = torch.cat(all_triple_to_img)
 
-  out = (all_imgs, all_objs, all_boxes, all_triples,
+  out = (all_imgs, all_ids, all_objs, all_boxes, all_triples,
          all_obj_to_img, all_triple_to_img)
   return out
 
@@ -204,11 +206,12 @@ def vg_uncollate_fn(batch):
   """
   Inverse operation to the above.
   """
-  imgs, objs, boxes, triples, obj_to_img, triple_to_img = batch
+  imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
   out = []
   obj_offset = 0
   for i in range(imgs.size(0)):
     cur_img = imgs[i]
+    cur_id = style_ids[i]
     o_idxs = (obj_to_img == i).nonzero().view(-1)
     t_idxs = (triple_to_img == i).nonzero().view(-1)
     cur_objs = objs[o_idxs]
@@ -217,6 +220,6 @@ def vg_uncollate_fn(batch):
     cur_triples[:, 0] -= obj_offset
     cur_triples[:, 2] -= obj_offset
     obj_offset += cur_objs.size(0)
-    out.append((cur_img, cur_objs, cur_boxes, cur_triples))
+    out.append((cur_img, cur_id, cur_objs, cur_boxes, cur_triples))
   return out
 

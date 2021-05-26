@@ -282,9 +282,7 @@ def build_vg_dsets(args):
     'max_objects': args.max_objects_per_image,
     'use_orphaned_objects': args.vg_use_orphaned_objects,
     'include_relationships': args.include_relationships,
-    'stylized_dir': args.stylized_dir, 
-    'style_ids': style_ids,
-    'style_names': style_names,
+    'stylized_dir': args.stylized_dir
   }
   train_dset = VgSceneGraphDataset(**dset_kwargs)
   iter_per_epoch = len(train_dset) // args.batch_size
@@ -329,9 +327,9 @@ def check_model(args, t, loader, model):
     for batch in loader:
       batch = [tensor.cuda() for tensor in batch]
       masks = None
-      if len(batch) == 6:
+      if len(batch) == 7:
         imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
-      elif len(batch) == 7:
+      elif len(batch) == 8:
         imgs, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       predicates = triples[:, 1] 
       device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -340,7 +338,7 @@ def check_model(args, t, loader, model):
         
       # Run the model as it has been run during training
       model_masks = masks
-      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_batch)
+      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=imgs)
       imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
@@ -360,13 +358,13 @@ def check_model(args, t, loader, model):
     samples = {}
     samples['gt_img'] = imgs
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_batch)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=imgs)
     samples['gt_box_gt_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_batch=style_batch)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_batch=imgs)
     samples['gt_box_pred_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, style_batch=style_batch)
+    model_out = model(objs, triples, obj_to_img, style_batch=imgs)
     samples['pred_box_pred_mask'] = model_out[0]
 
     for k, v in samples.items():
@@ -384,6 +382,7 @@ def check_model(args, t, loader, model):
       masks_pred_to_store = masks_pred_to_store.data.cpu().clone()
 
   batch_data = {
+    'style_ids': style_ids.detach().cpu().clone(),
     'objs': objs.detach().cpu().clone(),
     'boxes_gt': boxes.detach().cpu().clone(), 
     'masks_gt': masks_to_store,
@@ -541,7 +540,7 @@ def main(args):
         model_boxes = boxes
         model_masks = masks
         model_out = model(objs, triples, obj_to_img,
-                          boxes_gt=model_boxes, masks_gt=model_masks, style_batch=style_batch)
+                          boxes_gt=model_boxes, masks_gt=model_masks, style_batch=imgs)
         imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
       with timeit('loss', args.timing):
         # Skip the pixel loss if using GT boxes
