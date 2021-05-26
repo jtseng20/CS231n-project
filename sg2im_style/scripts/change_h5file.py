@@ -21,6 +21,7 @@ def run_script():
     output_dict = {k:[] for k in original_h5.keys() if k != 'object_attributes'}
     
     print("Finished preprocess...")
+    
     for idx, img_id in enumerate(original_h5['image_ids']):
         if img_id in style_vg:
             for k, v in original_dict.items():
