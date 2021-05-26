@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--h5_path', default='/scr/helenav/datasets/preprocess_vg/train.h5')
 parser.add_argument('--stylized_dir', default= '/vision2/u/helenav/datasets/vg_style')
 parser.add_argument('--vg_dir', default= '/vision2/u/helenav/datasets/vg')
-parser.add_argument('--output_h5_path', default= '/scr/helenav/datasets/preprocess_vg/styleized_train.h5')
+parser.add_argument('--output_h5_path', default= '/scr/helenav/datasets/preprocess_vg/stylized_train.h5')
 args = parser.parse_args()
 
 def run_script():
@@ -18,15 +18,17 @@ def run_script():
     output_h5 = h5py.File(args.output_h5_path, 'w')
     original_h5 = h5py.File(args.h5_path, 'r')
     original_dict = {k:np.asarray(v) for k, v in original_h5.items() if k != 'object_attributes'}
-    output_dict = {k:[] for k in original_h5.keys() if k != 'object_attributes'}
-    
+    output_dict = {}
+    style_vg = set(style_vg)
     print("Finished preprocess...")
-    
+    indices = []
     for idx, img_id in enumerate(original_h5['image_ids']):
+        print(idx)
         if img_id in style_vg:
-            for k, v in original_dict.items():
-                if k != 'object_attributes':
-                    output_dict[k].append(v[idx])
+            indices.append(idx)
+    for k, v in original_dict.items():
+        if k != 'object_attributes':
+            output_dict[k] = v[indices]
     for k, v in output_dict.items():
         output_h5.create_dataset(k, data=v)
     output_h5.create_dataset('object_attributes', data=original_h5['object_attributes'])
