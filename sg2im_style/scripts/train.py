@@ -141,7 +141,7 @@ parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
 
-parser.add_argument('--stylized_dir', default='stylized_images/)
+parser.add_argument('--stylized_dir', default='stylized_images/')
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
   curr_loss = curr_loss * weight
@@ -338,7 +338,7 @@ def check_model(args, t, loader, model):
         
       # Run the model as it has been run during training
       model_masks = masks
-      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=imgs)
+      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_ids)
       imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
@@ -358,13 +358,13 @@ def check_model(args, t, loader, model):
     samples = {}
     samples['gt_img'] = imgs
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=imgs)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_ids)
     samples['gt_box_gt_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_batch=imgs)
+    model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, style_batch=style_ids)
     samples['gt_box_pred_mask'] = model_out[0]
 
-    model_out = model(objs, triples, obj_to_img, style_batch=imgs)
+    model_out = model(objs, triples, obj_to_img, style_batch=style_ids)
     samples['pred_box_pred_mask'] = model_out[0]
 
     for k, v in samples.items():
@@ -540,7 +540,7 @@ def main(args):
         model_boxes = boxes
         model_masks = masks
         model_out = model(objs, triples, obj_to_img,
-                          boxes_gt=model_boxes, masks_gt=model_masks, style_batch=imgs)
+                          boxes_gt=model_boxes, masks_gt=model_masks, style_batch=style_ids)
         imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
       with timeit('loss', args.timing):
         # Skip the pixel loss if using GT boxes

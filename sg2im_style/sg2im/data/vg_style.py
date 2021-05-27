@@ -30,7 +30,7 @@ from .utils import imagenet_preprocess, Resize
 
 
 class VgSceneGraphDataset(Dataset):
-  def __init__(self, vocab, h5_path, image_dir, stylized_dir, image_size=(256, 256),
+  def __init__(self, vocab, h5_path, image_dir, stylized_dir, image_size=(64, 64),
                normalize_images=True, max_objects=10, max_samples=None,
                include_relationships=True, use_orphaned_objects=True):
     super(VgSceneGraphDataset, self).__init__()
@@ -80,13 +80,11 @@ class VgSceneGraphDataset(Dataset):
     index = index // self.num_styles
     
     img_path = os.path.join(self.image_dir, self.image_paths[index])
-
+    
     with open(img_path, 'rb') as f:
       with PIL.Image.open(f) as image:
         WW, HH = image.size
         image = self.transform(image.convert('RGB'))
-
-    H, W = self.image_size
 
     # Figure out which objects appear in relationships and which don't
     obj_idxs_with_rels = set()
@@ -148,10 +146,11 @@ class VgSceneGraphDataset(Dataset):
     style_id = self.data['style_ids'][style_index]
     stylized_file = f"{self.data['image_ids'][style_index]}_style{style_id}.jpg"
     stylized_path = os.path.join(self.stylized_dir, stylized_file)
+    
     with open(stylized_path, 'rb') as f:
       with PIL.Image.open(f) as stylized_image:
         stylized_image = self.transform(stylized_image.convert('RGB'))
-    
+
     return stylized_image, style_id, objs, boxes, triples
 
 
@@ -171,7 +170,7 @@ def vg_collate_fn(batch):
     triple_to_img[t] = n means that triples[t] belongs to imgs[n].
   """
   # batch is a list, and each element is (image, objs, boxes, triples) 
-  all_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], []
+  all_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
   for i, (img, style_id, objs, boxes, triples) in enumerate(batch):
@@ -190,7 +189,7 @@ def vg_collate_fn(batch):
     obj_offset += O
 
   all_imgs = torch.cat(all_imgs)
-  all_ids = torch.cat(all_ids)
+  all_ids = torch.LongTensor(all_ids)
   all_objs = torch.cat(all_objs)
   all_boxes = torch.cat(all_boxes)
   all_triples = torch.cat(all_triples)

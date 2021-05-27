@@ -87,11 +87,11 @@ class RefinementNetwork(nn.Module):
     nn.init.kaiming_normal_(output_conv_layers[0].weight)
     nn.init.kaiming_normal_(output_conv_layers[2].weight)
     self.output_conv = nn.Sequential(*output_conv_layers)
-    torch.random.manual_seed(30)
-    self.style_num  = 4
+    torch.random.manual_seed(69)
+    self.style_num = 30
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     self.style_dict = torch.rand((self.style_num, 1, 4, 4)).to(device)
-    # assert torch.sum(self.style_dict) - 31.9840 < 1e-5
+    assert torch.sum(self.style_dict) - 229.9530 < 1e-5
     
   def forward(self, layout, style_batch=None):
     """
