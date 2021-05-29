@@ -110,6 +110,7 @@ parser.add_argument('--normalization', default='batch')
 parser.add_argument('--activation', default='leakyrelu-0.2')
 parser.add_argument('--layout_noise_dim', default=32, type=int)
 parser.add_argument('--use_boxes_pred_after', default=-1, type=int)
+parser.add_argument('--use_shuffled_images', default=True, type=bool_flag)
 
 # Generator losses
 parser.add_argument('--mask_loss_weight', default=0, type=float)
@@ -539,12 +540,16 @@ def main(args):
       else:
         assert False
       predicates = triples[:, 1]
+      
+      shuffled_imgs = imgs.detach().clone()
+      if args.use_shuffled_images:
+        shuffled_imgs=shuffled_imgs[torch.randperm(shuffled_imgs.size()[0])]
 
       with timeit('forward', args.timing):
         model_boxes = boxes
         model_masks = masks
         model_out = model(objs, triples, obj_to_img,
-                          boxes_gt=model_boxes, masks_gt=model_masks, style_img=imgs)
+                          boxes_gt=model_boxes, masks_gt=model_masks, style_img=shuffled_imgs)
         imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
       with timeit('loss', args.timing):
         # Skip the pixel loss if using GT boxes
@@ -569,7 +574,7 @@ def main(args):
                               'g_gan_img_loss', weight)
         
       # This is our loss function for the style
-      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred)
+      style_loss_score = style_loss_module.get_style_score(style_img=shuffled_imgs, input_img=imgs_pred)
       total_loss = add_loss(total_loss, style_loss_score, losses,
                               'g_style_loss', weight=args.style_weight)
     
