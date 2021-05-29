@@ -4,10 +4,10 @@ import os
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--h5_path', default='/scr/helenav/datasets/preprocess_vg/train.h5')
+parser.add_argument('--h5_path', default='/scr/helenav/datasets/preprocess_vg/test.h5')
 parser.add_argument('--stylized_dir', default= '/vision2/u/helenav/datasets/vg_style')
 parser.add_argument('--vg_dir', default= '/vision2/u/helenav/datasets/vg')
-parser.add_argument('--output_h5_path', default= '/scr/helenav/datasets/preprocess_vg/stylized_train.h5')
+parser.add_argument('--output_h5_path', default= '/scr/helenav/datasets/preprocess_vg/stylized_test.h5')
 args = parser.parse_args()
 
 def run_script():

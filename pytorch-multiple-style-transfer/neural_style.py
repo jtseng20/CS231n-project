@@ -170,8 +170,8 @@ def stylize(args):
     for filename in content_filenames:
         num_images +=1
         print(num_images)
-        if num_images > 7000:
-            break
+#         if num_images > 7000:
+#             break
         content_image = utils.load_image(filename, scale=args.content_scale)
         content_transform = transforms.Compose([
                     transforms.ToTensor(),

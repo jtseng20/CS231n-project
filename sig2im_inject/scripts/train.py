@@ -569,7 +569,7 @@ def main(args):
                               'g_gan_img_loss', weight)
         
       # This is our loss function for the style
-      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred, style_weight=0)
+      style_loss_score = style_loss_module.get_style_score(style_img=imgs, input_img=imgs_pred)
       total_loss = add_loss(total_loss, style_loss_score, losses,
                               'g_style_loss', weight=args.style_weight)
     

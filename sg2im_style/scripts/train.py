@@ -338,8 +338,11 @@ def check_model(args, t, loader, model):
         
       # Run the model as it has been run during training
       model_masks = masks
-      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_ids)
+
+      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_batch)
+
       imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
+
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(
                                 args, skip_pixel_loss, model, imgs, imgs_pred,
