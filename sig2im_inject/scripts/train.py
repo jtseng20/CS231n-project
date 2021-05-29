@@ -34,8 +34,8 @@ import sys
 sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
 from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
-# Change this import depending on which dataset we're using
-from sg2im.data.vg import VgSceneGraphDataset, vg_collate_fn
+import sg2im.data.vg as vg_no_style
+import sg2im.data.vg_style_inject as vg_style_inject
 from sg2im.discriminators import PatchDiscriminator, AcCropDiscriminator
 from sg2im.losses import get_gan_losses
 from sg2im.metrics import jaccard
@@ -111,6 +111,7 @@ parser.add_argument('--normalization', default='batch')
 parser.add_argument('--activation', default='leakyrelu-0.2')
 parser.add_argument('--layout_noise_dim', default=32, type=int)
 parser.add_argument('--use_boxes_pred_after', default=-1, type=int)
+# Style image option
 parser.add_argument('--style_image_option', default='use_style')
 
 # Generator losses
@@ -150,6 +151,7 @@ parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
 
 # Style weight
 parser.add_argument('--style_weight', default=1, type=int)
+parser.add_argument('--stylized_dir', default='/vision2/u/helenav/datasets/vg_style')
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
   curr_loss = curr_loss * weight
@@ -285,8 +287,13 @@ def build_vg_dsets(args):
     'max_objects': args.max_objects_per_image,
     'use_orphaned_objects': args.vg_use_orphaned_objects,
     'include_relationships': args.include_relationships,
+    'stylized_dir': args.stylized_dir
   }
-  train_dset = VgSceneGraphDataset(**dset_kwargs)
+  if args.style_image_option == "use_style":
+    train_dset = vg_style_inject.VgSceneGraphDataset(**dset_kwargs)
+  else:
+    del dset_kwargs['stylized_dir']
+    train_dset = vg_no_style.VgSceneGraphDataset(**dset_kwargs)
   iter_per_epoch = len(train_dset) // args.batch_size
   print('There are %d iterations per epoch' % iter_per_epoch)
 
@@ -300,7 +307,10 @@ def build_vg_dsets(args):
 def build_loaders(args):
   if args.dataset == 'vg':
     vocab, train_dset, val_dset = build_vg_dsets(args)
-    collate_fn = vg_collate_fn
+    if args.style_image_option == "use_style":
+      collate_fn = vg_style_inject.vg_collate_fn
+    else:
+      collate_fn = vg_no_style.vg_collate_fn
   elif args.dataset == 'coco':
     vocab, train_dset, val_dset = build_coco_dsets(args)
     collate_fn = coco_collate_fn
@@ -329,15 +339,31 @@ def check_model(args, t, loader, model):
     for batch in loader:
       batch = [tensor.cuda() for tensor in batch]
       masks = None
+      style_imgs = None
       if len(batch) == 6:
         imgs, objs, boxes, triples, obj_to_img, triple_to_img = batch
       elif len(batch) == 7:
         imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+      elif len(batch) == 8:
+        # using vg_style_inject VgSceneGraphDataset gets styled and unstyled images
+        imgs, style_imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+      else:
+        assert False
+      
+      if args.style_image_option == "use_shuffle":
+        style_imgs = imgs.detach().clone()
+        style_imgs=style_imgs[torch.randperm(style_imgs.size()[0])]
+      elif args.style_image_option == "use_style":
+        assert len(batch) == 8
+      elif args.style_image_option == "use_own":
+        style_imgs = imgs.detach().clone()
+      else:
+        assert False
       predicates = triples[:, 1] 
 
       # Run the model as it has been run during training
       model_masks = masks
-      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks, style_img=imgs)
+      model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=model_masks, style_img=style_imgs)
       imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
 
       skip_pixel_loss = False
