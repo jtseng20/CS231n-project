@@ -207,11 +207,12 @@ def vg_uncollate_fn(batch):
   """
   Inverse operation to the above.
   """
-  imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
+  imgs, style_imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
   out = []
   obj_offset = 0
   for i in range(imgs.size(0)):
     cur_img = imgs[i]
+    cur_style_img = style_imgs[i]
     cur_id = style_ids[i]
     o_idxs = (obj_to_img == i).nonzero().view(-1)
     t_idxs = (triple_to_img == i).nonzero().view(-1)
@@ -221,6 +222,6 @@ def vg_uncollate_fn(batch):
     cur_triples[:, 0] -= obj_offset
     cur_triples[:, 2] -= obj_offset
     obj_offset += cur_objs.size(0)
-    out.append((cur_img, cur_id, cur_objs, cur_boxes, cur_triples))
+    out.append((cur_img, cur_style_img, cur_id, cur_objs, cur_boxes, cur_triples))
   return out
 
