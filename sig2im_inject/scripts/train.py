@@ -151,6 +151,7 @@ parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
 
 # Style weight
 parser.add_argument('--style_weight', default=1, type=int)
+parser.add_argument('--stylized_dir', default='/vision2/u/helenav/datasets/vg_style')
 
 def add_loss(total_loss, curr_loss, loss_dict, loss_name, weight=1):
   curr_loss = curr_loss * weight
@@ -286,10 +287,12 @@ def build_vg_dsets(args):
     'max_objects': args.max_objects_per_image,
     'use_orphaned_objects': args.vg_use_orphaned_objects,
     'include_relationships': args.include_relationships,
+    'stylized_dir': args.stylized_dir
   }
   if args.style_image_option == "use_style":
     train_dset = vg_style_inject.VgSceneGraphDataset(**dset_kwargs)
   else:
+    del dset_kwargs['stylized_dir']
     train_dset = vg_no_style.VgSceneGraphDataset(**dset_kwargs)
   iter_per_epoch = len(train_dset) // args.batch_size
   print('There are %d iterations per epoch' % iter_per_epoch)
