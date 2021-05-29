@@ -23,19 +23,14 @@ sys.path.append('./.')
 from sg2im.model import Sg2ImModel
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
-from PIL import Image
-import numpy as np
-from sg2im.data.utils import imagenet_preprocess, Resize
-import torchvision.transforms as T
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_weight_1/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_noise/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
-parser.add_argument('--style_image', default='/vision2/u/helenav/datasets/style-images/')
 
 
 def main(args):
@@ -56,48 +51,40 @@ def main(args):
     if not torch.cuda.is_available():
       print('WARNING: CUDA not available; falling back to CPU')
       device = torch.device('cpu')
-        
+
   # Load the model, with a bit of care in case there are no GPUs
   map_location = 'cpu' if device == torch.device('cpu') else None
-  checkpoint = torch.load(args.checkpoint, map_location=map_location)   
-
-  checkpoint['model_kwargs']['num_stylish'] = 0
+  checkpoint = torch.load(args.checkpoint, map_location=map_location)
   model = Sg2ImModel(**checkpoint['model_kwargs'])
   model.load_state_dict(checkpoint['model_state'])
-  print(model)
   model.eval()
   model.to(device)
-  
-  style_images = [f for f in os.listdir(args.style_image)]
-  print(style_images)
-  for style_image in style_images:
-      name = "style" + style_image[:-4] + "_"
-      style_image = Image.open(args.style_image + style_image)
-      with open(args.scene_graphs_json, 'r') as f:
-        scene_graphs = json.load(f)
-      transform = [Resize((64,64)), T.ToTensor(), imagenet_preprocess()]
-      transform = T.Compose(transform)
-      style_image = transform(style_image.convert('RGB')) 
-      style_image = torch.unsqueeze(style_image, 0)  
 
-      style_image = style_image.to(device)
-      # Run the model forward
-      with torch.no_grad():
-        imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_img=style_image)
-      imgs = imagenet_deprocess_batch(imgs)
+  # TO DO !!!! ACTUALLY HAVE A STYLE_BATCH
+  style_batch = torch.tensor([1, 1, 1, 1, 1, 1, 1]).to(device)
+  print(style_batch.shape)
 
-      # Save the generated images
-      for i in range(imgs.shape[0]):
-        img_np = imgs[i].numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, name + 'img%06d.png' % i)
-        imwrite(img_path, img_np)
+  # Load the scene graphs
+  with open(args.scene_graphs_json, 'r') as f:
+    scene_graphs = json.load(f)
 
-      # Draw the scene graphs
-      if args.draw_scene_graphs == 1:
-        for i, sg in enumerate(scene_graphs):
-          sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
-          sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
-          imwrite(sg_img_path, sg_img)
+  # Run the model forward
+  with torch.no_grad():
+    imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_batch=style_batch)
+  imgs = imagenet_deprocess_batch(imgs)
+
+  # Save the generated images
+  for i in range(imgs.shape[0]):
+    img_np = imgs[i].numpy().transpose(1, 2, 0)
+    img_path = os.path.join(args.output_dir, 'img%06d.png' % i)
+    imwrite(img_path, img_np)
+
+  # Draw the scene graphs
+  if args.draw_scene_graphs == 1:
+    for i, sg in enumerate(scene_graphs):
+      sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
+      sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
+      imwrite(sg_img_path, sg_img)
 
 
 if __name__ == '__main__':

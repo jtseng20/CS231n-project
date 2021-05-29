@@ -34,7 +34,7 @@ sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
 #from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
 from sg2im.data.vg_style import VgSceneGraphDataset, vg_collate_fn
-from sg2im.discriminators import PatchDiscriminator, AcCropDiscriminator
+from sg2im.discriminators_style_aware import StyleAwarePatchDiscriminator, StyleAwareAcCropDiscriminator
 from sg2im.losses import get_gan_losses
 from sg2im.metrics import jaccard
 from sg2im.model import Sg2ImModel
@@ -136,7 +136,7 @@ parser.add_argument('--d_img_weight', default=1.0, type=float) # multiplied by d
 parser.add_argument('--print_every', default=10, type=int)
 parser.add_argument('--timing', default=False, type=bool_flag)
 parser.add_argument('--checkpoint_every', default=10000, type=int)
-parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_o_conditional_norm')
+parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_both')
 parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
@@ -206,9 +206,9 @@ def build_obj_discriminator(args, vocab):
     'normalization': args.d_normalization,
     'activation': args.d_activation,
     'padding': args.d_padding,
-    'object_size': args.crop_size,
+    'object_size': args.crop_size
   }
-  discriminator = AcCropDiscriminator(**d_kwargs)
+  discriminator = StyleAwareAcCropDiscriminator(**d_kwargs)
   return discriminator, d_kwargs
 
 
@@ -224,9 +224,9 @@ def build_img_discriminator(args, vocab):
     'arch': args.d_img_arch,
     'normalization': args.d_normalization,
     'activation': args.d_activation,
-    'padding': args.d_padding,
+    'padding': args.d_padding
   }
-  discriminator = PatchDiscriminator(**d_kwargs)
+  discriminator = StyleAwarePatchDiscriminator(**d_kwargs)
   return discriminator, d_kwargs
 
 
@@ -550,7 +550,7 @@ def main(args):
                                 predicates, predicate_scores)
 
       if obj_discriminator is not None:
-        scores_fake, ac_loss = obj_discriminator(imgs_pred, objs, boxes, obj_to_img)
+        scores_fake, ac_loss = obj_discriminator(imgs_pred, objs, boxes, obj_to_img, style_batch=style_ids)
         total_loss = add_loss(total_loss, ac_loss, losses, 'ac_loss',
                               args.ac_loss_weight)
         weight = args.discriminator_loss_weight * args.d_obj_weight
@@ -558,7 +558,7 @@ def main(args):
                               'g_gan_obj_loss', weight)
 
       if img_discriminator is not None:
-        scores_fake = img_discriminator(imgs_pred)
+        scores_fake = img_discriminator(imgs_pred, style_batch=style_ids)
         weight = args.discriminator_loss_weight * args.d_img_weight
         total_loss = add_loss(total_loss, gan_g_loss(scores_fake), losses,
                               'g_gan_img_loss', weight)
@@ -580,8 +580,8 @@ def main(args):
       if obj_discriminator is not None:
         d_obj_losses = LossManager()
         imgs_fake = imgs_pred.detach()
-        scores_fake, ac_loss_fake = obj_discriminator(imgs_fake, objs, boxes, obj_to_img)
-        scores_real, ac_loss_real = obj_discriminator(imgs, objs, boxes, obj_to_img)
+        scores_fake, ac_loss_fake = obj_discriminator(imgs_fake, objs, boxes, obj_to_img, style_batch=style_ids)
+        scores_real, ac_loss_real = obj_discriminator(imgs, objs, boxes, obj_to_img, style_batch=style_ids)
 
         d_obj_gan_loss = gan_d_loss(scores_real, scores_fake)
         d_obj_losses.add_loss(d_obj_gan_loss, 'd_obj_gan_loss')
@@ -595,8 +595,8 @@ def main(args):
       if img_discriminator is not None:
         d_img_losses = LossManager()
         imgs_fake = imgs_pred.detach()
-        scores_fake = img_discriminator(imgs_fake)
-        scores_real = img_discriminator(imgs)
+        scores_fake = img_discriminator(imgs_fake, style_batch=style_ids)
+        scores_real = img_discriminator(imgs, style_batch=style_ids)
 
         d_img_gan_loss = gan_d_loss(scores_real, scores_fake)
         d_img_losses.add_loss(d_img_gan_loss, 'd_img_gan_loss')
