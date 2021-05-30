@@ -144,17 +144,14 @@ class VgSceneGraphDataset(Dataset):
     triples = torch.LongTensor(triples)
     
     style_id = self.data['style_ids'][style_index]
-    
     stylized_file = f"{self.data['image_ids'][style_index]}_style{style_id}.jpg"
-    
-    if self.stylized_dir is None:
-        return stylized_file, style_id, objs, boxes, triples
     stylized_path = os.path.join(self.stylized_dir, stylized_file)
+    
     with open(stylized_path, 'rb') as f:
       with PIL.Image.open(f) as stylized_image:
         stylized_image = self.transform(stylized_image.convert('RGB'))
 
-    return stylized_image, style_id, objs, boxes, triples
+    return image, stylized_image, style_id, objs, boxes, triples
 
 
 def vg_collate_fn(batch):
@@ -173,16 +170,12 @@ def vg_collate_fn(batch):
     triple_to_img[t] = n means that triples[t] belongs to imgs[n].
   """
   # batch is a list, and each element is (image, objs, boxes, triples) 
-  all_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], [], []
+  all_imgs, all_style_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
-  img_is_str = False
-  for i, (img, style_id, objs, boxes, triples) in enumerate(batch):
-    if isinstance(img, str):
-        img_is_str = True
-        all_imgs.append(img)
-    else:
-        all_imgs.append(img[None])
+  for i, (img, style_img, style_id, objs, boxes, triples) in enumerate(batch):
+    all_imgs.append(img[None])
+    all_style_imgs.append(style_img[None])
     all_ids.append(style_id)
     O, T = objs.size(0), triples.size(0)
     all_objs.append(objs)
@@ -195,8 +188,9 @@ def vg_collate_fn(batch):
     all_obj_to_img.append(torch.LongTensor(O).fill_(i))
     all_triple_to_img.append(torch.LongTensor(T).fill_(i))
     obj_offset += O
-  
-  all_imgs = torch.cat(all_imgs) if not img_is_str else all_imgs
+
+  all_imgs = torch.cat(all_imgs)
+  all_style_imgs = torch.cat(all_style_imgs)
   all_ids = torch.LongTensor(all_ids)
   all_objs = torch.cat(all_objs)
   all_boxes = torch.cat(all_boxes)
@@ -204,7 +198,7 @@ def vg_collate_fn(batch):
   all_obj_to_img = torch.cat(all_obj_to_img)
   all_triple_to_img = torch.cat(all_triple_to_img)
 
-  out = (all_imgs, all_ids, all_objs, all_boxes, all_triples,
+  out = (all_imgs, all_style_imgs, all_ids, all_objs, all_boxes, all_triples,
          all_obj_to_img, all_triple_to_img)
   return out
 
@@ -213,11 +207,12 @@ def vg_uncollate_fn(batch):
   """
   Inverse operation to the above.
   """
-  imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
+  imgs, style_imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
   out = []
   obj_offset = 0
   for i in range(imgs.size(0)):
     cur_img = imgs[i]
+    cur_style_img = style_imgs[i]
     cur_id = style_ids[i]
     o_idxs = (obj_to_img == i).nonzero().view(-1)
     t_idxs = (triple_to_img == i).nonzero().view(-1)
@@ -227,6 +222,6 @@ def vg_uncollate_fn(batch):
     cur_triples[:, 0] -= obj_offset
     cur_triples[:, 2] -= obj_offset
     obj_offset += cur_objs.size(0)
-    out.append((cur_img, cur_id, cur_objs, cur_boxes, cur_triples))
+    out.append((cur_img, cur_style_img, cur_id, cur_objs, cur_boxes, cur_triples))
   return out
 

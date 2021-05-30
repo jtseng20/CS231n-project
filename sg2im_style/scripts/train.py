@@ -266,12 +266,6 @@ def build_coco_dsets(args):
 def build_vg_dsets(args):
   with open(args.vocab_json, 'r') as f:
     vocab = json.load(f)
-                    
-  # TODO: Modify these two args to match
-  # id for the style, will be passed to model
-  style_ids = [0]
-  # names of styles (stylized image should be named <vg_image_without_extension>_<style_name>.jpg)
-  style_names = ['style_0']
   
   dset_kwargs = {
     'vocab': vocab,
