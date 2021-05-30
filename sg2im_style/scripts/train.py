@@ -51,7 +51,7 @@ parser.add_argument('--dataset', default='vg', choices=['vg', 'coco'])
 
 # Optimization hyperparameters
 parser.add_argument('--batch_size', default=32, type=int)
-parser.add_argument('--num_iterations', default=1000000, type=int)
+parser.add_argument('--num_iterations', default=160000, type=int)
 parser.add_argument('--learning_rate', default=1e-4, type=float)
 
 # Switch the generator to eval mode after this many iterations
@@ -601,6 +601,7 @@ def main(args):
 
       if t % args.print_every == 0:
         print('t = %d / %d' % (t, args.num_iterations))
+        print(args.output_dir)
         for name, val in losses.items():
           print(' G [%s]: %.4f' % (name, val))
           checkpoint['losses'][name].append(val)
