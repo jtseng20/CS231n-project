@@ -56,7 +56,7 @@ parser.add_argument('--dataset', default='vg', choices=['vg', 'coco'])
 
 # Optimization hyperparameters
 parser.add_argument('--batch_size', default=32, type=int)
-parser.add_argument('--num_iterations', default=1000000, type=int)
+parser.add_argument('--num_iterations', default=160000, type=int)
 parser.add_argument('--learning_rate', default=1e-4, type=float)
 
 # Switch the generator to eval mode after this many iterations
@@ -142,7 +142,7 @@ parser.add_argument('--d_img_weight', default=1.0, type=float) # multiplied by d
 # Output options
 parser.add_argument('--print_every', default=10, type=int)
 parser.add_argument('--timing', default=False, type=bool_flag)
-parser.add_argument('--checkpoint_every', default=10, type=int)
+parser.add_argument('--checkpoint_every', default=10000, type=int)
 parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg/inject_with_style_image_train/style_weight_1')
 parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
@@ -347,7 +347,7 @@ def check_model(args, t, loader, model):
         imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       elif len(batch) == 8:
         # using vg_style_inject VgSceneGraphDataset gets styled and unstyled images
-        imgs, style_imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+        imgs, style_imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
       else:
         assert False
       
@@ -568,7 +568,7 @@ def main(args):
         imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       elif len(batch) == 8:
         # using vg_style_inject VgSceneGraphDataset gets styled and unstyled images
-        imgs, style_imgs, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+        imgs, style_imgs, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
       else:
         assert False
       predicates = triples[:, 1]
@@ -661,6 +661,7 @@ def main(args):
 
       if t % args.print_every == 0:
         print('t = %d / %d' % (t, args.num_iterations))
+        print(args.output_dir)
         for name, val in losses.items():
           print(' G [%s]: %.4f' % (name, val))
           checkpoint['losses'][name].append(val)
