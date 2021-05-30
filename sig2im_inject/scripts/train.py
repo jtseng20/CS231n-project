@@ -33,7 +33,6 @@ import torchvision.models as models
 import sys
 sys.path.append('./.')
 from sg2im.data import imagenet_deprocess_batch
-from sg2im.data.coco import CocoSceneGraphDataset, coco_collate_fn
 import sg2im.data.vg as vg_no_style
 import sg2im.data.vg_style_inject as vg_style_inject
 from sg2im.discriminators import PatchDiscriminator, AcCropDiscriminator
@@ -73,8 +72,8 @@ parser.add_argument('--include_relationships', default=True, type=bool_flag)
 
 # VG-specific options
 parser.add_argument('--vg_image_dir', default=os.path.join(VG_DIR, 'images'))
-parser.add_argument('--train_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'train.h5'))
-parser.add_argument('--val_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'val.h5'))
+parser.add_argument('--train_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'stylized_train.h5'))
+parser.add_argument('--val_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'stylized_val.h5'))
 parser.add_argument('--vocab_json', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'vocab.json'))
 parser.add_argument('--max_objects_per_image', default=10, type=int)
 parser.add_argument('--vg_use_orphaned_objects', default=True, type=bool_flag)
@@ -143,8 +142,8 @@ parser.add_argument('--d_img_weight', default=1.0, type=float) # multiplied by d
 # Output options
 parser.add_argument('--print_every', default=10, type=int)
 parser.add_argument('--timing', default=False, type=bool_flag)
-parser.add_argument('--checkpoint_every', default=10000, type=int)
-parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg')
+parser.add_argument('--checkpoint_every', default=10, type=int)
+parser.add_argument('--output_dir', default='/scr/helenav/checkpoints_simsg/inject_with_style_image_train/style_weight_1')
 parser.add_argument('--checkpoint_name', default='checkpoint')
 parser.add_argument('--checkpoint_start_from', default=None)
 parser.add_argument('--restore_from_checkpoint', default=False, type=bool_flag)
@@ -291,16 +290,18 @@ def build_vg_dsets(args):
   }
   if args.style_image_option == "use_style":
     train_dset = vg_style_inject.VgSceneGraphDataset(**dset_kwargs)
+    dset_kwargs['h5_path'] = args.val_h5
+    del dset_kwargs['max_samples']
+    val_dset = vg_style_inject.VgSceneGraphDataset(**dset_kwargs)
   else:
     del dset_kwargs['stylized_dir']
     train_dset = vg_no_style.VgSceneGraphDataset(**dset_kwargs)
+    dset_kwargs['h5_path'] = args.val_h5
+    del dset_kwargs['max_samples']
+    val_dset = vg_no_style.VgSceneGraphDataset(**dset_kwargs)
   iter_per_epoch = len(train_dset) // args.batch_size
   print('There are %d iterations per epoch' % iter_per_epoch)
-
-  dset_kwargs['h5_path'] = args.val_h5
-  del dset_kwargs['max_samples']
-  val_dset = VgSceneGraphDataset(**dset_kwargs)
-  
+  print(len(train_dset))
   return vocab, train_dset, val_dset
 
 

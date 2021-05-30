@@ -1,0 +1,353 @@
+Namespace(ac_loss_weight=0.1, activation='leakyrelu-0.2', batch_size=32, bbox_pred_loss_weight=10, checkpoint_every=10, checkpoint_name='checkpoint', checkpoint_start_from=None, coco_include_other=False, coco_stuff_only=True, coco_train_image_dir='datasets/coco/images/train2017', coco_train_instances_json='datasets/coco/annotations/instances_train2017.json', coco_train_stuff_json='datasets/coco/annotations/stuff_train2017.json', coco_val_image_dir='datasets/coco/images/val2017', coco_val_instances_json='datasets/coco/annotations/instances_val2017.json', coco_val_stuff_json='datasets/coco/annotations/stuff_val2017.json', crop_size=32, d_activation='leakyrelu-0.2', d_clip=None, d_img_arch='C4-64-2,C4-128-2,C4-256-2', d_img_weight=1.0, d_normalization='batch', d_obj_arch='C4-64-2,C4-128-2,C4-256-2', d_obj_weight=1.0, d_padding='valid', dataset='vg', discriminator_loss_weight=0.01, embedding_dim=128, eval_mode_after=100000, gan_loss_type='gan', gconv_dim=128, gconv_hidden_dim=512, gconv_num_layers=5, image_size=(64, 64), include_relationships=True, instance_whitelist=None, l1_pixel_loss_weight=1.0, layout_noise_dim=32, learning_rate=0.0001, loader_num_workers=4, mask_loss_weight=0, mask_size=16, max_objects_per_image=10, min_object_size=0.02, min_objects_per_image=3, mlp_normalization='none', normalization='batch', num_iterations=1000000, num_train_samples=None, num_val_samples=1024, output_dir='/scr/helenav/checkpoints_simsg/inject_with_style_image_train/style_weight_1', predicate_pred_loss_weight=0, print_every=10, refinement_network_dims=(1024, 512, 256, 128, 64), restore_from_checkpoint=False, shuffle_val=True, stuff_whitelist=None, style_image_option='use_style', style_weight=1, stylized_dir='/vision2/u/helenav/datasets/vg_style', timing=False, train_h5='/scr/helenav/datasets/preprocess_vg/stylized_train.h5', use_boxes_pred_after=-1, val_h5='/scr/helenav/datasets/preprocess_vg/stylized_val.h5', vg_image_dir='/vision2/u/helenav/datasets/vg/images', vg_use_orphaned_objects=True, vocab_json='/scr/helenav/datasets/preprocess_vg/vocab.json')
+There are 3780 iterations per epoch
+120960
+succcessfully sent the normalization mean and std to device
+[EqualizedConv2d(), LeakyReLU(negative_slope=0.2), MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False), EqualizedConv2d(), LeakyReLU(negative_slope=0.2), MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False), EqualizedConv2d(), LeakyReLU(negative_slope=0.2), MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False), EqualizedConv2d(), LeakyReLU(negative_slope=0.2), MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False), Flatten(), EqualizedLinear(), LeakyReLU(negative_slope=0.2), EqualizedLinear(), LeakyReLU(negative_slope=0.2), EqualizedLinear(), LeakyReLU(negative_slope=0.2), EqualizedLinear(), LeakyReLU(negative_slope=0.2)]
+Sg2ImModel(
+  (style_map): GMapping(
+    (map): Sequential(
+      (0): EqualizedConv2d()
+      (1): LeakyReLU(negative_slope=0.2)
+      (2): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+      (3): EqualizedConv2d()
+      (4): LeakyReLU(negative_slope=0.2)
+      (5): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+      (6): EqualizedConv2d()
+      (7): LeakyReLU(negative_slope=0.2)
+      (8): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+      (9): EqualizedConv2d()
+      (10): LeakyReLU(negative_slope=0.2)
+      (11): MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)
+      (12): Flatten()
+      (13): EqualizedLinear()
+      (14): LeakyReLU(negative_slope=0.2)
+      (15): EqualizedLinear()
+      (16): LeakyReLU(negative_slope=0.2)
+      (17): EqualizedLinear()
+      (18): LeakyReLU(negative_slope=0.2)
+      (19): EqualizedLinear()
+      (20): LeakyReLU(negative_slope=0.2)
+    )
+  )
+  (obj_embeddings): Embedding(180, 128)
+  (pred_embeddings): Embedding(46, 128)
+  (gconv): GraphTripleConv(
+    (net1): Sequential(
+      (0): Linear(in_features=384, out_features=512, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=512, out_features=1152, bias=True)
+      (3): ReLU()
+    )
+    (net2): Sequential(
+      (0): Linear(in_features=512, out_features=512, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=512, out_features=128, bias=True)
+      (3): ReLU()
+    )
+  )
+  (gconv_net): GraphTripleConvNet(
+    (gconvs): ModuleList(
+      (0): GraphTripleConv(
+        (net1): Sequential(
+          (0): Linear(in_features=384, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=1152, bias=True)
+          (3): ReLU()
+        )
+        (net2): Sequential(
+          (0): Linear(in_features=512, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=128, bias=True)
+          (3): ReLU()
+        )
+      )
+      (1): GraphTripleConv(
+        (net1): Sequential(
+          (0): Linear(in_features=384, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=1152, bias=True)
+          (3): ReLU()
+        )
+        (net2): Sequential(
+          (0): Linear(in_features=512, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=128, bias=True)
+          (3): ReLU()
+        )
+      )
+      (2): GraphTripleConv(
+        (net1): Sequential(
+          (0): Linear(in_features=384, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=1152, bias=True)
+          (3): ReLU()
+        )
+        (net2): Sequential(
+          (0): Linear(in_features=512, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=128, bias=True)
+          (3): ReLU()
+        )
+      )
+      (3): GraphTripleConv(
+        (net1): Sequential(
+          (0): Linear(in_features=384, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=1152, bias=True)
+          (3): ReLU()
+        )
+        (net2): Sequential(
+          (0): Linear(in_features=512, out_features=512, bias=True)
+          (1): ReLU()
+          (2): Linear(in_features=512, out_features=128, bias=True)
+          (3): ReLU()
+        )
+      )
+    )
+  )
+  (box_net): Sequential(
+    (0): Linear(in_features=128, out_features=512, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=512, out_features=4, bias=True)
+    (3): ReLU()
+  )
+  (mask_net): Sequential(
+    (0): Upsample(scale_factor=2.0, mode=nearest)
+    (1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (3): ReLU()
+    (4): Upsample(scale_factor=2.0, mode=nearest)
+    (5): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (6): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (7): ReLU()
+    (8): Upsample(scale_factor=2.0, mode=nearest)
+    (9): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (10): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (11): ReLU()
+    (12): Upsample(scale_factor=2.0, mode=nearest)
+    (13): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (15): ReLU()
+    (16): Conv2d(128, 1, kernel_size=(1, 1), stride=(1, 1))
+  )
+  (rel_aux_net): Sequential(
+    (0): Linear(in_features=264, out_features=512, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=512, out_features=46, bias=True)
+    (3): ReLU()
+  )
+  (refinement_net): RefinementNetwork(
+    (refinement_modules): ModuleList(
+      (0): RefinementModule(
+        (layers): ModuleList(
+          (0): Conv2d(161, 1024, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (1): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(1024, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (2): LeakyReLU(negative_slope=0.2)
+          (3): Conv2d(1024, 1024, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (4): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(1024, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (5): LeakyReLU(negative_slope=0.2)
+        )
+      )
+      (1): RefinementModule(
+        (layers): ModuleList(
+          (0): Conv2d(1184, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (1): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(512, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (2): LeakyReLU(negative_slope=0.2)
+          (3): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (4): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(512, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (5): LeakyReLU(negative_slope=0.2)
+        )
+      )
+      (2): RefinementModule(
+        (layers): ModuleList(
+          (0): Conv2d(672, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (1): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(256, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (2): LeakyReLU(negative_slope=0.2)
+          (3): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (4): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(256, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (5): LeakyReLU(negative_slope=0.2)
+        )
+      )
+      (3): RefinementModule(
+        (layers): ModuleList(
+          (0): Conv2d(416, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (1): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(128, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (2): LeakyReLU(negative_slope=0.2)
+          (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (4): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(128, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (5): LeakyReLU(negative_slope=0.2)
+        )
+      )
+      (4): RefinementModule(
+        (layers): ModuleList(
+          (0): Conv2d(288, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (1): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(64, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (2): LeakyReLU(negative_slope=0.2)
+          (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+          (4): StylishNorm(
+            (top_epi): Sequential(
+              (0): NoiseLayer()
+              (1): LeakyReLU(negative_slope=0.01)
+              (2): InstanceNorm2d(64, eps=1e-05, momentum=0.1, affine=False, track_running_stats=False)
+            )
+            (style_mod): StyleMod(
+              (lin): EqualizedLinear()
+            )
+          )
+          (5): LeakyReLU(negative_slope=0.2)
+        )
+      )
+    )
+    (output_conv): Sequential(
+      (0): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): LeakyReLU(negative_slope=0.2)
+      (2): Conv2d(64, 3, kernel_size=(1, 1), stride=(1, 1))
+    )
+  )
+)
+Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2))
+BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.2)
+Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2))
+BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.2)
+Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2))
+Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2))
+BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.2)
+Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2))
+BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+LeakyReLU(negative_slope=0.2)
+Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2))
+AcCropDiscriminator(
+  (discriminator): AcDiscriminator(
+    (cnn): Sequential(
+      (0): Sequential(
+        (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2))
+        (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (2): LeakyReLU(negative_slope=0.2)
+        (3): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2))
+        (4): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (5): LeakyReLU(negative_slope=0.2)
+        (6): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2))
+      )
+      (1): GlobalAvgPool()
+      (2): Linear(in_features=256, out_features=1024, bias=True)
+    )
+    (real_classifier): Linear(in_features=1024, out_features=1, bias=True)
+    (obj_classifier): Linear(in_features=1024, out_features=179, bias=True)
+  )
+)
+PatchDiscriminator(
+  (cnn): Sequential(
+    (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2))
+    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): LeakyReLU(negative_slope=0.2)
+    (3): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2))
+    (4): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): LeakyReLU(negative_slope=0.2)
+    (6): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2))
+  )
+  (classifier): Conv2d(256, 1, kernel_size=(1, 1), stride=(1, 1))
+)
+Starting epoch 1
+././sg2im/style_loss.py:47: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.mean = torch.tensor(mean).view(-1, 1, 1)
+././sg2im/style_loss.py:48: UserWarning: To copy construct from a tensor, it is recommended to use sourceTensor.clone().detach() or sourceTensor.clone().detach().requires_grad_(True), rather than torch.tensor(sourceTensor).
+  self.std = torch.tensor(std).view(-1, 1, 1)
+THCudaCheck FAIL file=/opt/conda/conda-bld/pytorch_1565272271120/work/aten/src/THC/generic/THCTensorMath.cu line=196 error=59 : device-side assert triggered
+Traceback (most recent call last):
+  File "scripts/train.py", line 734, in <module>
+    main(args)
+  File "scripts/train.py", line 590, in main
+    boxes_gt=model_boxes, masks_gt=model_masks, style_img=style_imgs)
+  File "/vision2/u/helenav/anaconda3/envs/simsg_env/lib/python3.7/site-packages/torch/nn/modules/module.py", line 547, in __call__
+    result = self.forward(*input, **kwargs)
+  File "././sg2im/model.py", line 149, in forward
+    obj_vecs, pred_vecs = self.gconv(obj_vecs, pred_vecs, edges)
+  File "/vision2/u/helenav/anaconda3/envs/simsg_env/lib/python3.7/site-packages/torch/nn/modules/module.py", line 547, in __call__
+    result = self.forward(*input, **kwargs)
+  File "././sg2im/graph.py", line 82, in forward
+    cur_t_vecs = torch.cat([cur_s_vecs, pred_vecs, cur_o_vecs], dim=1)
+RuntimeError: cuda runtime error (59) : device-side assert triggered at /opt/conda/conda-bld/pytorch_1565272271120/work/aten/src/THC/generic/THCTensorMath.cu:196
