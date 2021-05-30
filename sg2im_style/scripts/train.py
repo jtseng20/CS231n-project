@@ -339,7 +339,7 @@ def check_model(args, t, loader, model):
 
       model_out = model(objs, triples, obj_to_img, boxes_gt=boxes, masks_gt=masks, style_batch=style_ids)
 
-      imgs_pred, style_ids, boxes_pred, masks_pred, predicate_scores = model_out
+      imgs_pred, boxes_pred, masks_pred, predicate_scores = model_out
 
       skip_pixel_loss = False
       total_loss, losses =  calculate_model_losses(

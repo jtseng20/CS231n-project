@@ -342,7 +342,6 @@ class GMapping(nn.Module):
         act, gain = {'relu': (torch.relu, np.sqrt(2)),
                      'leakyrelu': (nn.LeakyReLU(negative_slope=0.2), np.sqrt(2))}[activation]
 
-
         layers = []
         for layer_idx in range(num_conv):
             if layer_idx == 0:

@@ -53,7 +53,7 @@ class StyleAwareAcDiscriminator(nn.Module):
 
     cnn_kwargs = {
       'arch': arch,
-      'normalization': normalization,
+      'normalization': 'none',
       'activation': activation,
       'pooling': pooling, 
       'padding': padding,
