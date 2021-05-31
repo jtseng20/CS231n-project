@@ -144,7 +144,7 @@ class VgSceneGraphDataset(Dataset):
     triples = torch.LongTensor(triples)
     
     style_id = self.data['style_ids'][style_index]
-    stylized_file = f"{self.data['image_ids'][style_index]}_style{style_id}.jpg"
+    stylized_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
     stylized_path = os.path.join(self.stylized_dir, stylized_file)
     
     with open(stylized_path, 'rb') as f:

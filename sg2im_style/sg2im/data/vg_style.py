@@ -145,7 +145,7 @@ class VgSceneGraphDataset(Dataset):
     
     style_id = self.data['style_ids'][style_index]
     
-    stylized_file = f"{self.data['image_ids'][style_index]}_style{style_id}.jpg"
+    stylized_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
     
     if self.stylized_dir is None:
         return stylized_file, style_id, objs, boxes, triples
