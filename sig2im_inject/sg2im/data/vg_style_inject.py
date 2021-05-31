@@ -202,7 +202,6 @@ def vg_collate_fn(batch):
          all_obj_to_img, all_triple_to_img)
   return out
 
-
 def vg_uncollate_fn(batch):
   """
   Inverse operation to the above.
