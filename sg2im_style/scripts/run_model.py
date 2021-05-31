@@ -27,24 +27,24 @@ from sg2im.data.vg_style import VgSceneGraphDataset, vg_collate_fn
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_noise/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_o_conditional_norm/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
-parser.add_argument('--styles', nargs='*', default=[])
+parser.add_argument('--styles', nargs='*', default=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29])
 
-parser.add_argument('--use_test', action='store_true')
-parser.add_argument('--test_h5', default=os.path.join('~/datasets/vg/', 'stylized_test.h5'))
-parser.add_argument('--vocab_json', default=os.path.join('~/datasets/vg/', 'vocab.json'))
+# parser.add_argument('--use_test', action='store_true')
+# parser.add_argument('--test_h5', default=os.path.join('~/datasets/vg/', 'stylized_test.h5'))
+# parser.add_argument('--vocab_json', default=os.path.join('~/datasets/vg/', 'vocab.json'))
 
-parser.add_argument('--batch_size', default=32, type=int)
-parser.add_argument('--image_size', default='64,64', type=int_tuple)
-parser.add_argument('--loader_num_workers', default=2, type=int)
-parser.add_argument('--include_relationships', default=True, type=bool_flag)
-parser.add_argument('--max_objects_per_image', default=10, type=int)
-parser.add_argument('--vg_use_orphaned_objects', default=True, type=bool_flag)
+# parser.add_argument('--batch_size', default=32, type=int)
+# parser.add_argument('--image_size', default='64,64', type=int_tuple)
+# parser.add_argument('--loader_num_workers', default=2, type=int)
+# parser.add_argument('--include_relationships', default=True, type=bool_flag)
+# parser.add_argument('--max_objects_per_image', default=10, type=int)
+# parser.add_argument('--vg_use_orphaned_objects', default=True, type=bool_flag)
 
 
 def main(args):
@@ -74,68 +74,69 @@ def main(args):
   model.eval()
   model.to(device)
 
-  if args.use_test:
-    with open(args.vocab_json, 'r') as f:
-      vocab = json.load(f)
+#   if args.use_test:
+#     with open(args.vocab_json, 'r') as f:
+#       vocab = json.load(f)
 
-    dset_kwargs = {
-      'vocab': vocab,
-      'h5_path': args.test_h5,
-      'image_dir': args.vg_image_dir,
-      'image_size': args.image_size,
-      'max_samples': None,
-      'max_objects': args.max_objects_per_image,
-      'use_orphaned_objects': args.vg_use_orphaned_objects,
-      'include_relationships': args.include_relationships,
-      'stylized_dir': None
-    }
-    test_dset = VgSceneGraphDataset(**test_kwargs)
-    iter_per_epoch = len(test_dset) // args.batch_size
-    print('There are %d iterations per epoch' % iter_per_epoch)
+#     dset_kwargs = {
+#       'vocab': vocab,
+#       'h5_path': args.test_h5,
+#       'image_dir': args.vg_image_dir,
+#       'image_size': args.image_size,
+#       'max_samples': None,
+#       'max_objects': args.max_objects_per_image,
+#       'use_orphaned_objects': args.vg_use_orphaned_objects,
+#       'include_relationships': args.include_relationships,
+#       'stylized_dir': None
+#     }
+#     test_dset = VgSceneGraphDataset(**test_kwargs)
+#     iter_per_epoch = len(test_dset) // args.batch_size
+#     print('There are %d iterations per epoch' % iter_per_epoch)
 
-    loader_kwargs = {
-      'batch_size': args.batch_size,
-      'num_workers': args.loader_num_workers,
-      'shuffle': False,
-      'collate_fn': vg_collate_fn,
-    }
-    test_loader = DataLoader(test_dset, **loader_kwargs)
+#     loader_kwargs = {
+#       'batch_size': args.batch_size,
+#       'num_workers': args.loader_num_workers,
+#       'shuffle': False,
+#       'collate_fn': vg_collate_fn,
+#     }
+#     test_loader = DataLoader(test_dset, **loader_kwargs)
     
-    for idx, batch in enumerate(test_loader):
-      if idx % 100 == 0:
-        print(idx)
+#     for idx, batch in enumerate(test_loader):
+#       if idx % 100 == 0:
+#         print(idx)
         
-      masks = None
-      batch = [batch[i].to(device) for i in range(1, len(batch))]
-      if len(batch) == 7:
-        filenames, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
-      elif len(batch) == 8:
-        filenames, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
-      else:
-        assert False
-      predicates = triples[:, 1]
+#       masks = None
+#       batch = [batch[i].to(device) for i in range(1, len(batch))]
+#       if len(batch) == 7:
+#         filenames, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
+#       elif len(batch) == 8:
+#         filenames, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+#       else:
+#         assert False
+#       predicates = triples[:, 1]
         
-      model_boxes = boxes
-      model_masks = masks 
-      with torch.no_grad():
-        model_out = model(objs, triples, obj_to_img, boxes_gt=model_boxes, 
-                          masks_gt=model_masks, style_batch=style_ids)
-        imgs, boxes_pred, masks_pred, predicate_scores = model_out
-        imgs = imagenet_deprocess_batch(imgs)
+#       model_boxes = boxes
+#       model_masks = masks 
+#       with torch.no_grad():
+#         model_out = model(objs, triples, obj_to_img, boxes_gt=model_boxes, 
+#                           masks_gt=model_masks, style_batch=style_ids)
+#         imgs, boxes_pred, masks_pred, predicate_scores = model_out
+#         imgs = imagenet_deprocess_batch(imgs)
         
-      for i in range(imgs.shape[0]):
-        img_np = imgs[i].numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, filenames[i])
-        imwrite(img_path, img_np)
+#       for i in range(imgs.shape[0]):
+#         img_np = imgs[i].numpy().transpose(1, 2, 0)
+#         img_path = os.path.join(args.output_dir, filenames[i])
+#         imwrite(img_path, img_np)
       
-  else:
+#   else:
+  if True:
     # Load the scene graphs
     with open(args.scene_graphs_json, 'r') as f:
       scene_graphs = json.load(f)
     
-    # TO DO !!!! ACTUALLY HAVE A STYLE_BATCH
-    for style in styles:
-        style_batch = torch.tensor([style] * len(scene_graphs)).to(device)
+    for style in args.styles:
+        name = "style" + str(style) + "_"
+        style_batch = torch.LongTensor([style] * len(scene_graphs)).to(device)
 
         # Run the model forward
         with torch.no_grad():
@@ -145,7 +146,7 @@ def main(args):
         # Save the generated images
         for i in range(imgs.shape[0]):
           img_np = imgs[i].numpy().transpose(1, 2, 0)
-          img_path = os.path.join(args.output_dir, f'img%06d_style{style}.png' % i)
+          img_path = os.path.join(args.output_dir, name + 'img%06d.png' % i)
           imwrite(img_path, img_np)
 
     # Draw the scene graphs
