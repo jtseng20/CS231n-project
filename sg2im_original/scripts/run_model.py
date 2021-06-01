@@ -19,6 +19,8 @@ import argparse, json, os
 from imageio import imwrite
 import torch
 
+import sys
+sys.path.append('./.')
 from sg2im.model import Sg2ImModel
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
