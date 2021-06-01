@@ -32,7 +32,8 @@ from .utils import imagenet_preprocess, Resize
 class VgSceneGraphDataset(Dataset):
   def __init__(self, vocab, h5_path, image_dir, image_size=(256, 256),
                normalize_images=True, max_objects=10, max_samples=None,
-               include_relationships=True, use_orphaned_objects=True):
+               include_relationships=True, use_orphaned_objects=True,
+               test_mode=False):
     super(VgSceneGraphDataset, self).__init__()
 
     self.image_dir = image_dir
@@ -57,6 +58,8 @@ class VgSceneGraphDataset(Dataset):
         else:
           self.data[k] = torch.IntTensor(np.asarray(v))
 
+    self.test_mode = test_mode
+
   def __len__(self):
     num = self.data['object_names'].size(0)
     if self.max_samples is not None:
@@ -73,7 +76,7 @@ class VgSceneGraphDataset(Dataset):
     - triples: LongTensor of shape (T, 3) where triples[t] = [i, p, j]
       means that (objs[i], p, objs[j]) is a triple.
     """
-    img_path = os.path.join(self.image_dir, self.image_paths[index])
+    img_path = os.path.join(self.image_dir, self.image_paths[index].decode('utf-8'))
 
     with open(img_path, 'rb') as f:
       with PIL.Image.open(f) as image:
@@ -138,10 +141,12 @@ class VgSceneGraphDataset(Dataset):
       triples.append([i, in_image, O - 1])
 
     triples = torch.LongTensor(triples)
+    if self.test_mode:
+      return self.image_paths[index].decode('utf-8'), objs, boxes, triples
     return image, objs, boxes, triples
 
 
-def vg_collate_fn(batch):
+def vg_collate_fn(batch, test_mode=False):
   """
   Collate function to be used when wrapping a VgSceneGraphDataset in a
   DataLoader. Returns a tuple of the following:
@@ -161,7 +166,10 @@ def vg_collate_fn(batch):
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
   for i, (img, objs, boxes, triples) in enumerate(batch):
-    all_imgs.append(img[None])
+    if test_mode:
+      all_imgs.append(img)
+    else:
+      all_imgs.append(img[None])
     O, T = objs.size(0), triples.size(0)
     all_objs.append(objs)
     all_boxes.append(boxes)
@@ -174,7 +182,8 @@ def vg_collate_fn(batch):
     all_triple_to_img.append(torch.LongTensor(T).fill_(i))
     obj_offset += O
 
-  all_imgs = torch.cat(all_imgs)
+  if not test_mode:
+    all_imgs = torch.cat(all_imgs)
   all_objs = torch.cat(all_objs)
   all_boxes = torch.cat(all_boxes)
   all_triples = torch.cat(all_triples)

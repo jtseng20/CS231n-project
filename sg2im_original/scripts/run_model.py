@@ -17,14 +17,26 @@
 import argparse, json, os
 
 from imageio import imwrite
+import functools
+import math
+from collections import defaultdict
+import random
+
+import numpy as np
 import torch
+import torch.optim as optim
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 import sys
 sys.path.append('./.')
 from sg2im.model import Sg2ImModel
+from sg2im.data.vg import VgSceneGraphDataset, vg_collate_fn
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
-
+from sg2im.utils import int_tuple, float_tuple, str_tuple
+from sg2im.utils import timeit, bool_flag, LossManager
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--checkpoint', default='sg2im-models/vg128.pt')
@@ -36,6 +48,7 @@ parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 parser.add_argument('--use_test', action='store_true')
 parser.add_argument('--test_h5', default=os.path.join('~/datasets/', 'stylized_test.h5'))
 parser.add_argument('--vocab_json', default=os.path.join('~/datasets/vg/', 'vocab.json'))
+parser.add_argument('--vg_image_dir', default='~/datasets/vg/images/')
 
 parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--image_size', default='64,64', type=int_tuple)
@@ -85,17 +98,18 @@ def main(args):
       'max_objects': args.max_objects_per_image,
       'use_orphaned_objects': args.vg_use_orphaned_objects,
       'include_relationships': args.include_relationships,
-      'stylized_dir': None
+      'test_mode': True
     }
-    test_dset = VgSceneGraphDataset(**test_kwargs)
+    test_dset = VgSceneGraphDataset(**dset_kwargs)
     iter_per_epoch = len(test_dset) // args.batch_size
     print('There are %d iterations per epoch' % iter_per_epoch)
 
+    collate_fn = lambda x: vg_collate_fn(x, test_mode=True)
     loader_kwargs = {
       'batch_size': args.batch_size,
       'num_workers': args.loader_num_workers,
       'shuffle': False,
-      'collate_fn': vg_collate_fn,
+      'collate_fn': collate_fn,
     }
     test_loader = DataLoader(test_dset, **loader_kwargs)
     
@@ -103,49 +117,49 @@ def main(args):
       print("Batch", idx)
         
       masks = None
-      batch = [batch[i].to(device) for i in range(1, len(batch))]
-      if len(batch) == 7:
-        filenames, style_ids, objs, boxes, triples, obj_to_img, triple_to_img = batch
-      elif len(batch) == 8:
-        filenames, style_ids, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
+      batch = [batch[0]] + [tensor.to(device) for tensor in batch[1:]]
+      if len(batch) == 6:
+        filenames, objs, boxes, triples, obj_to_img, triple_to_img = batch
+      elif len(batch) == 7:
+        filenames, objs, boxes, masks, triples, obj_to_img, triple_to_img = batch
       else:
         assert False
       predicates = triples[:, 1]
-        
+      
       model_boxes = boxes
       model_masks = masks 
       with torch.no_grad():
         model_out = model(objs, triples, obj_to_img, boxes_gt=model_boxes, 
-                          masks_gt=model_masks, style_batch=style_ids)
+                          masks_gt=model_masks)
         imgs, boxes_pred, masks_pred, predicate_scores = model_out
         imgs = imagenet_deprocess_batch(imgs)
         
       for i in range(imgs.shape[0]):
         img_np = imgs[i].cpu().numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, filenames[i])
+        img_path = os.path.join(args.output_dir, filenames[i].replace('/', '--'))
         imwrite(img_path, img_np)
   else:
     # Load the scene graphs
     with open(args.scene_graphs_json, 'r') as f:
-    scene_graphs = json.load(f)
+      scene_graphs = json.load(f)
 
     # Run the model forward
     with torch.no_grad():
-    imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs)
-    imgs = imagenet_deprocess_batch(imgs)
+      imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs)
+      imgs = imagenet_deprocess_batch(imgs)
 
     # Save the generated images
     for i in range(imgs.shape[0]):
-    img_np = imgs[i].numpy().transpose(1, 2, 0)
-    img_path = os.path.join(args.output_dir, 'img%06d.png' % i)
-    imwrite(img_path, img_np)
+      img_np = imgs[i].numpy().transpose(1, 2, 0)
+      img_path = os.path.join(args.output_dir, 'img%06d.png' % i)
+      imwrite(img_path, img_np)
 
     # Draw the scene graphs
     if args.draw_scene_graphs == 1:
-    for i, sg in enumerate(scene_graphs):
-      sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
-      sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
-      imwrite(sg_img_path, sg_img)
+      for i, sg in enumerate(scene_graphs):
+        sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
+        sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
+        imwrite(sg_img_path, sg_img)
 
 
 if __name__ == '__main__':
