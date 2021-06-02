@@ -115,3 +115,18 @@ def split_graph_batch(triples, obj_data, obj_to_img, triple_to_img):
 
   return triples_out, obj_data_out
 
+def linear_interp(a, b, num):
+  '''
+  Inputs:
+    - a: a single latent
+    - b: a single latent
+  Returns:
+    - a list of latents
+  Linearly interpolates from a to b over num steps
+  '''
+  assert num >= 2, "Number of steps needs to be >= 2"
+  step = (b-a)/(num-1)
+  out = []
+  for i in range(num):
+    out.append(a + step*i)
+  return out

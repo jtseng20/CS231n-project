@@ -25,7 +25,7 @@ from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
 from PIL import Image
 import numpy as np
-from sg2im.data.utils import imagenet_preprocess, Resize
+from sg2im.data.utils import imagenet_preprocess, Resize, linear_interp
 import torchvision.transforms as T
 
 
@@ -37,6 +37,40 @@ parser.add_argument('--draw_scene_graphs', type=int, default=0)
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 parser.add_argument('--style_image', default='/vision2/u/helenav/datasets/style-images/')
 
+# Interpolation arguments
+parser.add_argument('--do_interp_test', type=bool, default=False)
+parser.add_argument('--latent_path', default='/vision2/u/helenav/datasets/style-images/')
+parser.add_argument('--latent_1', default='file1')
+parser.add_argument('--latent_2', default='file2')
+parser.add_argument('--interp_steps', type=int, default=8)
+
+def do_interp_test(args, model, device):
+  print("Doing interpolation test")
+  def process_img(path):
+    img = Image.open(args.latent_path+path)
+    transform = T.compose([Resize((64,64)), T.ToTensor(), imagenet_preprocess()])
+    return transform(img.convert('RGB')) 
+  
+  latent_1 = model.style_map(process_img(args.latent_1))
+  latent_2 = model.style_map(process_img(args.latent_1))
+  interp_list = linear_interp(latent_1, latent_2, args.interp_steps)
+  
+  for num, interp in enumerate(interp_list):
+    name = "interp" + args.latent_1 + "_" + args.latent_2 + "_" + str(num) + "_"
+    with open(args.scene_graphs_json, 'r') as f:
+      scene_graphs = json.load(f)  
+
+    interp = torch.unsqueeze(interp,0).to(device)
+    # Run the model forward
+    with torch.no_grad():
+      imgs, boxes_pred, masks_pred, _ = model.forward_json_manual_latent(scene_graphs, style_encoding=interp)
+    imgs = imagenet_deprocess_batch(imgs)
+
+    # Save the generated images
+    for i in range(imgs.shape[0]):
+      img_np = imgs[i].numpy().transpose(1, 2, 0)
+      img_path = os.path.join(args.output_dir, name + 'img%06d.png' % i)
+      imwrite(img_path, img_np)
 
 def main(args):
   if not os.path.isfile(args.checkpoint):
@@ -67,6 +101,10 @@ def main(args):
   print(model)
   model.eval()
   model.to(device)
+  
+  if args.do_interp_test:
+    do_interp_test(args, model, device)
+    return
   
   style_images = [f for f in os.listdir(args.style_image)]
   print(style_images)

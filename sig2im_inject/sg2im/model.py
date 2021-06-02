@@ -42,7 +42,6 @@ class Sg2ImModel(nn.Module):
     if len(kwargs) > 0:
       print('WARNING: Model got unexpected kwargs ', kwargs)
     
-    # TODO: initialize stylegan code
     self.style_map = GMapping(input_dim=image_size, input_channels=3)
     
     self.vocab = vocab
@@ -182,6 +181,66 @@ class Sg2ImModel(nn.Module):
     style_encoding = self.style_map(style_img)
     img = self.refinement_net(layout, style=style_encoding)
     return img, boxes_pred, masks_pred, rel_scores
+    
+  def forward_manual_latent(self, objs, triples, obj_to_img=None,
+              boxes_gt=None, masks_gt=None, style_encoding=None):
+    """
+    Just like forward() except the caller passes in a latent directly
+    """
+    device = torch.device('cuda:0')
+    objs = objs.to(device)
+    triples = triples.to(device)
+    
+    O, T = objs.size(0), triples.size(0)
+    s, p, o = triples.chunk(3, dim=1)           # All have shape (T, 1)
+    s, p, o = [x.squeeze(1) for x in [s, p, o]] # Now have shape (T,)
+    edges = torch.stack([s, o], dim=1)          # Shape is (T, 2)
+
+    if obj_to_img is None:
+      obj_to_img = torch.zeros(O, dtype=objs.dtype, device=objs.device)
+
+    obj_vecs = self.obj_embeddings(objs)
+    obj_vecs_orig = obj_vecs
+    pred_vecs = self.pred_embeddings(p)
+
+    if isinstance(self.gconv, nn.Linear):
+      obj_vecs = self.gconv(obj_vecs)
+    else:
+      obj_vecs, pred_vecs = self.gconv(obj_vecs, pred_vecs, edges)
+    if self.gconv_net is not None:
+      obj_vecs, pred_vecs = self.gconv_net(obj_vecs, pred_vecs, edges)
+
+    boxes_pred = self.box_net(obj_vecs)
+
+    masks_pred = None
+    if self.mask_net is not None:
+      mask_scores = self.mask_net(obj_vecs.view(O, -1, 1, 1))
+      masks_pred = mask_scores.squeeze(1).sigmoid()
+
+    s_boxes, o_boxes = boxes_pred[s], boxes_pred[o]
+    s_vecs, o_vecs = obj_vecs_orig[s], obj_vecs_orig[o]
+    rel_aux_input = torch.cat([s_boxes, o_boxes, s_vecs, o_vecs], dim=1)
+    rel_scores = self.rel_aux_net(rel_aux_input)
+
+    H, W = self.image_size
+    layout_boxes = boxes_pred if boxes_gt is None else boxes_gt
+ 
+    if masks_pred is None:
+      layout = boxes_to_layout(obj_vecs, layout_boxes, obj_to_img, H, W)
+    else:
+      layout_masks = masks_pred if masks_gt is None else masks_gt
+      layout = masks_to_layout(obj_vecs, layout_boxes, layout_masks,
+                               obj_to_img, H, W)
+
+    if self.layout_noise_dim > 0:
+      N, C, H, W = layout.size()
+      noise_shape = (N, self.layout_noise_dim, H, W)
+      layout_noise = torch.randn(noise_shape, dtype=layout.dtype,
+                                 device=layout.device)
+      layout = torch.cat([layout, layout_noise], dim=1)
+    # pass the latent
+    img = self.refinement_net(layout, style=style_encoding)
+    return img, boxes_pred, masks_pred, rel_scores
 
   def encode_scene_graphs(self, scene_graphs):
     """
@@ -243,4 +302,9 @@ class Sg2ImModel(nn.Module):
     """ Convenience method that combines encode_scene_graphs and forward. """
     objs, triples, obj_to_img = self.encode_scene_graphs(scene_graphs)
     return self.forward(objs, triples, obj_to_img, style_img=style_img)
+    
+  def forward_json_manual_latent(self, scene_graphs, style_encoding=None):
+    """ Convenience method that combines encode_scene_graphs and forward_manual_latent. """
+    objs, triples, obj_to_img = self.encode_scene_graphs(scene_graphs)
+    return self.forward_manual_latent(objs, triples, obj_to_img, style_encoding=style_encoding)
 

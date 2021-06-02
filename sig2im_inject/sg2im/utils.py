@@ -89,4 +89,3 @@ class LossManager(object):
 
   def items(self):
     return self.all_losses.items()
-
