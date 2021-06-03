@@ -42,6 +42,8 @@ import torchvision.transforms as TF
 from PIL import Image
 from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d
+import random
+
 
 try:
     from tqdm import tqdm
@@ -113,8 +115,8 @@ def get_activations(files, model, batch_size=50, dims=2048, device='cpu', num_wo
         print(('Warning: batch size is bigger than the data size. '
                'Setting batch size to data size'))
         batch_size = len(files)
-    transform = [TF.ToTensor(),TF.Resize((64,64))]
-    dataset = ImagePathDataset(files, transforms=transform)
+    transform = [TF.Resize((64,64)), TF.ToTensor()]
+    dataset = ImagePathDataset(files, transforms=TF.Compose(transform))
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=batch_size,
                                              shuffle=False,
@@ -243,24 +245,26 @@ def compute_statistics_of_path(path, model, batch_size, dims, device, num_worker
         m_list = [1]
         s_list = [1]
         path = pathlib.Path(path)
-        for i in range(30):
+        for i in range(15):
             print("Calculating activation statistics for " + str(i))
             if ground_truth:
                 path = f'/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/filename{i}.txt'
                 with open(path) as f:
                     content = f.readlines()
                 files = ['/vision2/u/helenav/datasets/vg_style/' + x.strip() for x in content]
+                files = random.sample(files, 10000)
+                with open(f'fidsample_style{i}.txt', 'w') as f:
+                     f.writelines(files)
             else:
                 files = [file for file in path.glob(f'*style{i}.jpg')]
-                
             print("Starting calculations...")
             m, s = calculate_activation_statistics(files, model, batch_size,
                                                    dims, device, num_workers)
             m_list.append(m)
             s_list.append(s)
-    if ground_truth:
-        print("Saving FID...")
-        np.savez("/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/ground_truth_FID_stats", mu=m_list, sigma=s_list)
+            if ground_truth:
+                print("Saving FID...")
+                np.savez(f"/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/ground_truth_FID_stats{i}", mu=m, sigma=s)
     return m_list, s_list
 
 
@@ -279,7 +283,7 @@ def calculate_fid_given_paths(paths, batch_size, device, dims, num_workers=8):
                                         dims, device, num_workers, ground_truth=True)
     m2_list, s2_list = compute_statistics_of_path(paths[1], model, batch_size,
                                         dims, device, num_workers, ground_truth=False)
-    for i in range(30):
+    for i in range(15):
         fid_value = calculate_frechet_distance(m1_list[i], s1_list[i], m2_list[i], s2_list[i])
         fid_value_list.append(fid_value)
     return fid_value_list
