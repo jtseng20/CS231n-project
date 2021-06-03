@@ -32,7 +32,7 @@ from .utils import imagenet_preprocess, Resize
 class VgSceneGraphDataset(Dataset):
   def __init__(self, vocab, h5_path, image_dir, stylized_dir, style_reference_dir, image_size=(64, 64),
                normalize_images=True, max_objects=10, max_samples=None,
-               include_relationships=True, use_orphaned_objects=True):
+               include_relationships=True, use_orphaned_objects=True, testing=False):
     super(VgSceneGraphDataset, self).__init__()
     
     self.image_dir = image_dir
@@ -60,6 +60,7 @@ class VgSceneGraphDataset(Dataset):
     self.stylized_dir = stylized_dir
     self.style_reference_dir = style_reference_dir
     self.num_styles = self.data['style_ids'].size(0)
+    self.testing = testing
 
   def __len__(self):
     num = self.data['object_names'].size(0)
@@ -145,12 +146,15 @@ class VgSceneGraphDataset(Dataset):
     triples = torch.LongTensor(triples)
     
     style_id = self.data['style_ids'][style_index]
+    stylized_output_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
+
     style_file = f"{style_id}.jpg"
-    style_path = os.path.join(self.style_reference_dir, style_file)
-    
+    style_path = os.path.join(self.style_reference_dir, style_file)    
     with open(style_path, 'rb') as f:
       with PIL.Image.open(f) as style_img:
         style_img = self.transform(style_img.convert('RGB'))
+    if self.testing:
+        return stylized_output_file, style_img, style_id, objs, boxes, triples
 
     return image, style_img, style_id, objs, boxes, triples
 
@@ -174,8 +178,13 @@ def vg_collate_fn(batch):
   all_imgs, all_style_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
+  img_is_str = False
   for i, (img, style_img, style_id, objs, boxes, triples) in enumerate(batch):
-    all_imgs.append(img[None])
+    if isinstance(img, str):
+        img_is_str = True
+        all_imgs.append(img)
+    else:
+        all_imgs.append(img[None])
     all_style_imgs.append(style_img[None])
     all_ids.append(style_id)
     O, T = objs.size(0), triples.size(0)
@@ -190,7 +199,7 @@ def vg_collate_fn(batch):
     all_triple_to_img.append(torch.LongTensor(T).fill_(i))
     obj_offset += O
 
-  all_imgs = torch.cat(all_imgs)
+  all_imgs = torch.cat(all_imgs) if not img_is_str else all_imgs
   all_style_imgs = torch.cat(all_style_imgs)
   all_ids = torch.LongTensor(all_ids)
   all_objs = torch.cat(all_objs)

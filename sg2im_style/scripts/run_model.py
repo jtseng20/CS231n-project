@@ -50,9 +50,9 @@ from sg2im.utils import timeit, bool_flag, LossManager
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_o_conditional_norm/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_patch/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
-parser.add_argument('--output_dir', default='/scr/helenav/outputs/style_test_sg2im_w_o_conditional_norm')
+parser.add_argument('--output_dir', default='/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_patch')
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
@@ -148,6 +148,7 @@ def main(args):
         img_np = imgs[i].cpu().numpy().transpose(1, 2, 0)
         img_path = os.path.join(args.output_dir, filenames[i])
         imwrite(img_path, img_np)
+        
   # if there is sheep
   else:
     # Load the scene graphs

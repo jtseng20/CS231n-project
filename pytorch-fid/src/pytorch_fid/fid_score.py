@@ -63,7 +63,7 @@ parser.add_argument('--dims', type=int, default=2048,
                     choices=list(InceptionV3.BLOCK_INDEX_BY_DIM),
                     help=('Dimensionality of Inception features to use. '
                           'By default, uses pool3 features'))
-parser.add_argument('path', type=str, nargs=2,
+parser.add_argument('--path', type=str, nargs=2,
                     help=('Paths to the generated images or '
                           'to .npz statistic files'))
 
@@ -113,8 +113,8 @@ def get_activations(files, model, batch_size=50, dims=2048, device='cpu', num_wo
         print(('Warning: batch size is bigger than the data size. '
                'Setting batch size to data size'))
         batch_size = len(files)
-
-    dataset = ImagePathDataset(files, transforms=TF.ToTensor())
+    transform = [TF.ToTensor(),TF.Resize((64,64))]
+    dataset = ImagePathDataset(files, transforms=transform)
     dataloader = torch.utils.data.DataLoader(dataset,
                                              batch_size=batch_size,
                                              shuffle=False,
@@ -125,7 +125,7 @@ def get_activations(files, model, batch_size=50, dims=2048, device='cpu', num_wo
 
     start_idx = 0
 
-    for batch in tqdm(dataloader):
+    for batch in dataloader:
         batch = batch.to(device)
 
         with torch.no_grad():
@@ -227,20 +227,40 @@ def calculate_activation_statistics(files, model, batch_size=50, dims=2048,
     return mu, sigma
 
 
-def compute_statistics_of_path(path, model, batch_size, dims, device, num_workers=8):
+def compute_statistics_of_path(path, model, batch_size, dims, device, num_workers=8, ground_truth=False):
+    print("Computing Statistics of path")
     if path.endswith('.npz'):
-        with np.load(path) as f:
-            m, s = f['mu'][:], f['sigma'][:]
-    else:
         m_list = []
         s_list = []
+        with np.load(path) as f:
+            for i in range(30):
+                print("Acessing the FID scores for " + str(i))
+                m, s = f['mu'][i][:], f['sigma'][i][:]
+                m_list.append(m)
+                s_list.append(s)
+    else:
+        print(path)
+        m_list = [1]
+        s_list = [1]
         path = pathlib.Path(path)
         for i in range(30):
-            files = sorted([file for file in path.glob(f'*style{i}.jpg')])
+            print("Calculating activation statistics for " + str(i))
+            if ground_truth:
+                path = f'/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/filename{i}.txt'
+                with open(path) as f:
+                    content = f.readlines()
+                files = ['/vision2/u/helenav/datasets/vg_style/' + x.strip() for x in content]
+            else:
+                files = [file for file in path.glob(f'*style{i}.jpg')]
+                
+            print("Starting calculations...")
             m, s = calculate_activation_statistics(files, model, batch_size,
                                                    dims, device, num_workers)
             m_list.append(m)
             s_list.append(s)
+    if ground_truth:
+        print("Saving FID...")
+        np.savez("/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/ground_truth_FID_stats", mu=m_list, sigma=s_list)
     return m_list, s_list
 
 
@@ -249,15 +269,16 @@ def calculate_fid_given_paths(paths, batch_size, device, dims, num_workers=8):
     for p in paths:
         if not os.path.exists(p):
             raise RuntimeError('Invalid path: %s' % p)
-
+    print("Getting the model...")
     block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
-
+    print("Sending the model to device...")
     model = InceptionV3([block_idx]).to(device)
+    print("Done sending model to device...")
     fid_value_list = []
     m1_list, s1_list = compute_statistics_of_path(paths[0], model, batch_size,
-                                        dims, device, num_workers)
+                                        dims, device, num_workers, ground_truth=True)
     m2_list, s2_list = compute_statistics_of_path(paths[1], model, batch_size,
-                                        dims, device, num_workers)
+                                        dims, device, num_workers, ground_truth=False)
     for i in range(30):
         fid_value = calculate_frechet_distance(m1_list[i], s1_list[i], m2_list[i], s2_list[i])
         fid_value_list.append(fid_value)
@@ -271,12 +292,12 @@ def main():
         device = torch.device('cuda' if (torch.cuda.is_available()) else 'cpu')
     else:
         device = torch.device(args.device)
-
     fid_value = calculate_fid_given_paths(args.path,
                                           args.batch_size,
                                           device,
                                           args.dims,
                                           args.num_workers)
+    print(args.path)
     print('FID: ', fid_value)
     print('FID Average: ', np.mean(fid_value))
 

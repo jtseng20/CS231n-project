@@ -56,7 +56,6 @@ class VgSceneGraphDataset(Dataset):
           self.image_paths = list(v)
         else:
           self.data[k] = torch.IntTensor(np.asarray(v))
-    
     self.stylized_dir = stylized_dir
     self.num_styles = self.data['style_ids'].size(0)
 
@@ -144,9 +143,12 @@ class VgSceneGraphDataset(Dataset):
     triples = torch.LongTensor(triples)
     
     style_id = self.data['style_ids'][style_index]
-    stylized_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
-    stylized_path = os.path.join(self.stylized_dir, stylized_file)
     
+    stylized_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
+    
+    if self.stylized_dir is None:
+        return stylized_file, style_id, objs, boxes, triples
+    stylized_path = os.path.join(self.stylized_dir, stylized_file)
     with open(stylized_path, 'rb') as f:
       with PIL.Image.open(f) as stylized_image:
         stylized_image = self.transform(stylized_image.convert('RGB'))
@@ -173,8 +175,13 @@ def vg_collate_fn(batch):
   all_imgs, all_ids, all_objs, all_boxes, all_triples = [], [], [], [], []
   all_obj_to_img, all_triple_to_img = [], []
   obj_offset = 0
+  img_is_str = False
   for i, (img, style_id, objs, boxes, triples) in enumerate(batch):
-    all_imgs.append(img[None])
+    if isinstance(img, str):
+        img_is_str = True
+        all_imgs.append(img)
+    else:
+        all_imgs.append(img[None])
     all_ids.append(style_id)
     O, T = objs.size(0), triples.size(0)
     all_objs.append(objs)
@@ -187,8 +194,8 @@ def vg_collate_fn(batch):
     all_obj_to_img.append(torch.LongTensor(O).fill_(i))
     all_triple_to_img.append(torch.LongTensor(T).fill_(i))
     obj_offset += O
-
-  all_imgs = torch.cat(all_imgs)
+  
+  all_imgs = torch.cat(all_imgs) if not img_is_str else all_imgs
   all_ids = torch.LongTensor(all_ids)
   all_objs = torch.cat(all_objs)
   all_boxes = torch.cat(all_boxes)
