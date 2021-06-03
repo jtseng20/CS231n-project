@@ -30,7 +30,7 @@ from .utils import imagenet_preprocess, Resize
 
 
 class VgSceneGraphDataset(Dataset):
-  def __init__(self, vocab, h5_path, image_dir, stylized_dir, image_size=(64, 64),
+  def __init__(self, vocab, h5_path, image_dir, stylized_dir, style_reference_dir, image_size=(64, 64),
                normalize_images=True, max_objects=10, max_samples=None,
                include_relationships=True, use_orphaned_objects=True):
     super(VgSceneGraphDataset, self).__init__()
@@ -58,6 +58,7 @@ class VgSceneGraphDataset(Dataset):
           self.data[k] = torch.IntTensor(np.asarray(v))
     
     self.stylized_dir = stylized_dir
+    self.style_reference_dir = style_reference_dir
     self.num_styles = self.data['style_ids'].size(0)
 
   def __len__(self):
@@ -144,14 +145,14 @@ class VgSceneGraphDataset(Dataset):
     triples = torch.LongTensor(triples)
     
     style_id = self.data['style_ids'][style_index]
-    stylized_file = f"{self.data['image_ids'][index]}_style{style_id}.jpg"
-    stylized_path = os.path.join(self.stylized_dir, stylized_file)
+    style_file = f"{style_id}.jpg"
+    style_path = os.path.join(self.style_reference_dir, style_file)
     
-    with open(stylized_path, 'rb') as f:
-      with PIL.Image.open(f) as stylized_image:
-        stylized_image = self.transform(stylized_image.convert('RGB'))
+    with open(style_path, 'rb') as f:
+      with PIL.Image.open(f) as style_img:
+        style_img = self.transform(style_img.convert('RGB'))
 
-    return image, stylized_image, style_id, objs, boxes, triples
+    return image, style_img, style_id, objs, boxes, triples
 
 
 def vg_collate_fn(batch):
