@@ -38,25 +38,25 @@ parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 parser.add_argument('--style_image', default='/vision2/u/helenav/datasets/style-images/')
 
 # Interpolation arguments
-parser.add_argument('--do_interp_test', type=bool, default=False)
+parser.add_argument('--do_interp_test', dest='do_interp_test', default=False, action='store_true')
 parser.add_argument('--latent_path', default='/vision2/u/helenav/datasets/style-images/')
-parser.add_argument('--latent_1', default='file1')
-parser.add_argument('--latent_2', default='file2')
+parser.add_argument('--latent_1', default='19.jpg')
+parser.add_argument('--latent_2', default='2.jpg')
 parser.add_argument('--interp_steps', type=int, default=8)
 
 def do_interp_test(args, model, device):
   print("Doing interpolation test")
   def process_img(path):
     img = Image.open(args.latent_path+path)
-    transform = T.compose([Resize((64,64)), T.ToTensor(), imagenet_preprocess()])
-    return transform(img.convert('RGB')) 
+    transform = T.Compose([Resize((64,64)), T.ToTensor(), imagenet_preprocess()])
+    return torch.unsqueeze(transform(img.convert('RGB')),0).to(device)
   
   latent_1 = model.style_map(process_img(args.latent_1))
-  latent_2 = model.style_map(process_img(args.latent_1))
+  latent_2 = model.style_map(process_img(args.latent_2))
   interp_list = linear_interp(latent_1, latent_2, args.interp_steps)
   
   for num, interp in enumerate(interp_list):
-    name = "interp" + args.latent_1 + "_" + args.latent_2 + "_" + str(num) + "_"
+    name = "interp" + args.latent_1[:-4] + "_" + args.latent_2[:-4] + "_" + str(num) + "_"
     with open(args.scene_graphs_json, 'r') as f:
       scene_graphs = json.load(f)  
 
