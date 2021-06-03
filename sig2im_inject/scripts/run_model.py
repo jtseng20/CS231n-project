@@ -30,6 +30,7 @@ import torchvision.transforms as T
 
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/inject_with_style_image_train/style_weight_100/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')

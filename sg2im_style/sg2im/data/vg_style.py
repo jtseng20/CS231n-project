@@ -56,7 +56,6 @@ class VgSceneGraphDataset(Dataset):
           self.image_paths = list(v)
         else:
           self.data[k] = torch.IntTensor(np.asarray(v))
-    
     self.stylized_dir = stylized_dir
     self.num_styles = self.data['style_ids'].size(0)
 

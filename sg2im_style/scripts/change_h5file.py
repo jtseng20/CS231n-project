@@ -40,5 +40,6 @@ def run_script():
         print(k, v)
     print("Finished checking...")
 
+
 if __name__ == '__main__':
     run_script()

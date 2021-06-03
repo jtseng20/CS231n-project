@@ -189,7 +189,7 @@ def stylize(args):
             with torch.no_grad():
                 output = style_model(content_image, style_id = [style_id]).cpu()
             utils.save_image(output_images_path +filename[filename.rfind("/")+1:-4]+'_style'+str(style_id)+'.jpg', output[0])
-
+            
 def main():
     main_arg_parser = argparse.ArgumentParser(description="parser for fast-neural-style")
     subparsers = main_arg_parser.add_subparsers(title="subcommands", dest="subcommand")

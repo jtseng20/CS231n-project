@@ -26,7 +26,7 @@ import sg2im.vis as vis
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_patch/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_both/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
 parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
