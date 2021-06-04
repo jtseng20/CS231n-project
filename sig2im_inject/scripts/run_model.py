@@ -53,8 +53,9 @@ from sg2im.utils import timeit, bool_flag, LossManager
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/style_weight_100/checkpoint_with_model.pt')
-parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
-parser.add_argument('--output_dir', default='/scr/helenav/outputs/style_test_inject_weight_100')
+parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_street.json')
+#/scr/helenav/outputs/style_test_inject_weight_100
+parser.add_argument('--output_dir', default='outputs')
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 parser.add_argument('--style_image', default='/vision2/u/helenav/datasets/style-images/')
@@ -62,8 +63,8 @@ parser.add_argument('--style_image', default='/vision2/u/helenav/datasets/style-
 # Interpolation arguments
 parser.add_argument('--do_interp_test', dest='do_interp_test', default=False, action='store_true')
 parser.add_argument('--latent_path', default='/vision2/u/helenav/datasets/style-images/')
-parser.add_argument('--latent_1', default='19.jpg')
-parser.add_argument('--latent_2', default='2.jpg')
+parser.add_argument('--latent_1', default='6.jpg')
+parser.add_argument('--latent_2', default='22.jpg')
 parser.add_argument('--interp_steps', type=int, default=8)
 
 
@@ -204,7 +205,7 @@ def main(args):
   style_images = [f for f in os.listdir(args.style_image)]
   print(style_images)
   for style_image in style_images:
-      name = "style" + style_image[:-4] + "_"
+      name = "_" + "style" + style_image[:-4]
       style_image = Image.open(args.style_image + style_image)
       with open(args.scene_graphs_json, 'r') as f:
         scene_graphs = json.load(f)
@@ -222,7 +223,7 @@ def main(args):
       # Save the generated images
       for i in range(imgs.shape[0]):
         img_np = imgs[i].numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, name + 'img%06d.png' % i)
+        img_path = os.path.join(args.output_dir, f'img00000{i}' + name + '.png')
         imwrite(img_path, img_np)
 
       # Draw the scene graphs

@@ -23,7 +23,7 @@ sys.path.append('./.')
 from sg2im.model import Sg2ImModel
 from sg2im.data.utils import imagenet_deprocess_batch
 import sg2im.vis as vis
-from sg2im.data.vg_style_inject import VgSceneGraphDataset, vg_collate_fn
+from sg2im.data.vg_style import VgSceneGraphDataset, vg_collate_fn
 
 
 import functools
@@ -50,9 +50,10 @@ from sg2im.utils import timeit, bool_flag, LossManager
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_patch/checkpoint_with_model.pt')
+parser.add_argument('--checkpoint', default='/scr/helenav/checkpoints_simsg/sg2im_style/w_conditional_norm/w_both/checkpoint_with_model.pt')
 parser.add_argument('--scene_graphs_json', default='scene_graphs/figure_6_sheep.json')
-parser.add_argument('--output_dir', default='/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_patch')
+#/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_patch
+parser.add_argument('--output_dir', default='/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_both')
 parser.add_argument('--device', default='gpu', choices=['cpu', 'gpu'])
 
 parser.add_argument('--draw_scene_graphs', type=int, default=0)
@@ -150,6 +151,7 @@ def main(args):
         imwrite(img_path, img_np)
   # if there is sheep
   else:
+    print("Running sheep...")
     # Load the scene graphs
     with open(args.scene_graphs_json, 'r') as f:
       scene_graphs = json.load(f)

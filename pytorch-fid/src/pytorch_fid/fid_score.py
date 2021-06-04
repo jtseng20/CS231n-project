@@ -229,7 +229,7 @@ def calculate_activation_statistics(files, model, batch_size=50, dims=2048,
     return mu, sigma
 
 
-def compute_statistics_of_path(path, model, batch_size, dims, device, num_workers=8, ground_truth=False):
+def compute_statistics_of_path_gen_original(path, model, batch_size, dims, device, num_workers=8, ground_truth=False):
     print("Computing Statistics of path")
     if path.endswith('.npz'):
         m_list = []
@@ -242,10 +242,10 @@ def compute_statistics_of_path(path, model, batch_size, dims, device, num_worker
                 s_list.append(s)
     else:
         print(path)
-        m_list = [1]
-        s_list = [1]
+        m_list = []
+        s_list = []
         path = pathlib.Path(path)
-        for i in range(15):
+        for i in range(15,29):
             print("Calculating activation statistics for " + str(i))
             if ground_truth:
                 path = f'/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/filename{i}.txt'
@@ -267,6 +267,32 @@ def compute_statistics_of_path(path, model, batch_size, dims, device, num_worker
                 np.savez(f"/scr/helenav/CS231n-project/pytorch-fid/src/pytorch_fid/ground_truth_FID_stats{i}", mu=m, sigma=s)
     return m_list, s_list
 
+def compute_statistics_of_path(path, model, batch_size, dims, device, num_workers=8, ground_truth=False):
+    print("Computing Statistics of path")
+    if ground_truth:
+        m_list = []
+        s_list = []
+        for i in range(30):
+            with np.load(path[i]) as f:
+                print("Acessing the FID scores for " + str(i))
+                m, s = f['mu'][:], f['sigma'][:]
+                m_list.append(m)
+                s_list.append(s)
+    else:
+        print(path)
+        m_list = []
+        s_list = []
+        path = pathlib.Path(path)
+        for i in range(30):
+            print("Calculating activation statistics for " + str(i))
+            files = [file for file in path.glob(f'*style{i}.jpg')]
+            print("Starting calculations...")
+            m, s = calculate_activation_statistics(files, model, batch_size,
+                                                   dims, device, num_workers)
+            m_list.append(m)
+            s_list.append(s)
+    return m_list, s_list
+
 
 def calculate_fid_given_paths(paths, batch_size, device, dims, num_workers=8):
     """Calculates the FID of two paths"""
@@ -279,11 +305,14 @@ def calculate_fid_given_paths(paths, batch_size, device, dims, num_workers=8):
     model = InceptionV3([block_idx]).to(device)
     print("Done sending model to device...")
     fid_value_list = []
-    m1_list, s1_list = compute_statistics_of_path(paths[0], model, batch_size,
+    paths_of_ground_truth = []
+    for i in range(30):
+        paths_of_ground_truth.append(f'ground_truth_FID_stats{i}.npz')
+    m1_list, s1_list = compute_statistics_of_path(paths_of_ground_truth, model, batch_size,
                                         dims, device, num_workers, ground_truth=True)
     m2_list, s2_list = compute_statistics_of_path(paths[1], model, batch_size,
                                         dims, device, num_workers, ground_truth=False)
-    for i in range(15):
+    for i in range(30):
         fid_value = calculate_frechet_distance(m1_list[i], s1_list[i], m2_list[i], s2_list[i])
         fid_value_list.append(fid_value)
     return fid_value_list

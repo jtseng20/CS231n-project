@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--loader_num_workers', default=1, type=int)
 parser.add_argument('--shuffle', action='store_true')
 parser.add_argument('--ground_truth_dir', default='/vision2/u/helenav/datasets/vg_style')
-parser.add_argument('--model_results_dir', default='/scr/helenav/outputs/style_test_inject_weight_100')
+parser.add_argument('--model_results_dir', default='/vision2/u/helenav/outputs/inject_with_style_image_w_100/inject_with_style_image_w_100')
 
 parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--splice_name', action='store_true')
@@ -49,6 +49,7 @@ args = parser.parse_args()
 
 
 def main():
+    print("Starting the process...")
     device = torch.device('cuda:0')
     print(os.listdir(args.ground_truth_dir)[0])
     print(os.listdir(args.model_results_dir)[0])

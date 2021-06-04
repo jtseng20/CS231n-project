@@ -40,7 +40,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--loader_num_workers', default=1, type=int)
 parser.add_argument('--shuffle', action='store_true')
 parser.add_argument('--ground_truth_dir', default='/vision2/u/helenav/datasets/vg_style')
-parser.add_argument('--model_results_dir', default='/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_patch')
+parser.add_argument('--model_results_dir', default='/scr/helenav/outputs/style_test_sg2im_w_conditional_norm_both')
 
 parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--splice_name', action='store_true')
