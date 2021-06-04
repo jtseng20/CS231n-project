@@ -67,6 +67,8 @@ parser.add_argument('--latent_1', default='6.jpg')
 parser.add_argument('--latent_2', default='22.jpg')
 parser.add_argument('--interp_steps', type=int, default=8)
 
+# Noise injection
+parser.add_argument('--inject_noise', dest='inject_noise', default=False, action='store_true')
 
 parser.add_argument('--use_test', action='store_true')
 parser.add_argument('--test_h5', default=os.path.join('/scr/helenav/datasets/preprocess_vg', 'stylized_test.h5'))
@@ -110,58 +112,58 @@ def do_interp_test(args, model, device):
       imwrite(img_path, img_np)
     
 def run_test_set(args, model, device):
-    with open(args.vocab_json, 'r') as f:
-      vocab = json.load(f)
+  with open(args.vocab_json, 'r') as f:
+    vocab = json.load(f)
 
-    dset_kwargs = {
-      'vocab': vocab,
-      'h5_path': args.test_h5,
-      'image_dir': args.vg_image_dir,
-      'style_reference_dir': args.style_image,
-      'image_size': args.image_size,
-      'max_samples': None,
-      'max_objects': args.max_objects_per_image,
-      'use_orphaned_objects': args.vg_use_orphaned_objects,
-      'include_relationships': args.include_relationships,
-      'stylized_dir': args.style_image,
-      'testing':True
-        
-    }
-    test_dset = VgSceneGraphDataset(**dset_kwargs)
-    iter_per_epoch = len(test_dset) // args.batch_size
-    print('There are %d iterations per epoch' % iter_per_epoch)
+  dset_kwargs = {
+    'vocab': vocab,
+    'h5_path': args.test_h5,
+    'image_dir': args.vg_image_dir,
+    'style_reference_dir': args.style_image,
+    'image_size': args.image_size,
+    'max_samples': None,
+    'max_objects': args.max_objects_per_image,
+    'use_orphaned_objects': args.vg_use_orphaned_objects,
+    'include_relationships': args.include_relationships,
+    'stylized_dir': args.style_image,
+    'testing':True
+      
+  }
+  test_dset = VgSceneGraphDataset(**dset_kwargs)
+  iter_per_epoch = len(test_dset) // args.batch_size
+  print('There are %d iterations per epoch' % iter_per_epoch)
 
-    loader_kwargs = {
-      'batch_size': args.batch_size,
-      'num_workers': args.loader_num_workers,
-      'shuffle': False,
-      'collate_fn': vg_collate_fn,
-    }
-    test_loader = DataLoader(test_dset, **loader_kwargs)
-    
-    for idx, batch in enumerate(test_loader):
-      if idx % 100 == 0:
-        print(idx)
-        
-      masks = None
-      batch = [batch[0]] + [batch[i].to(device) for i in range(1, len(batch))]
-      print(len(batch))
-      stylized_output_file, style_img, style_id, objs, boxes, triples, obj_to_img, triple_to_img = batch
-      predicates = triples[:, 1]
-        
-      model_boxes = boxes
-      model_masks = masks 
-      with torch.no_grad():
-        model_out = model(objs=objs, triples=triples, obj_to_img=obj_to_img,
-              boxes_gt=boxes, masks_gt=None, style_img=style_img)
-        imgs, boxes_pred, masks_pred, predicate_scores = model_out
-        imgs = imagenet_deprocess_batch(imgs)
-        
-      for i in range(imgs.shape[0]):
-        img_np = imgs[i].cpu().numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, stylized_output_file[i])
-        imwrite(img_path, img_np)
-      print(os.listdir(args.output_dir))
+  loader_kwargs = {
+    'batch_size': args.batch_size,
+    'num_workers': args.loader_num_workers,
+    'shuffle': False,
+    'collate_fn': vg_collate_fn,
+  }
+  test_loader = DataLoader(test_dset, **loader_kwargs)
+  
+  for idx, batch in enumerate(test_loader):
+    if idx % 100 == 0:
+      print(idx)
+      
+    masks = None
+    batch = [batch[0]] + [batch[i].to(device) for i in range(1, len(batch))]
+    print(len(batch))
+    stylized_output_file, style_img, style_id, objs, boxes, triples, obj_to_img, triple_to_img = batch
+    predicates = triples[:, 1]
+      
+    model_boxes = boxes
+    model_masks = masks 
+    with torch.no_grad():
+      model_out = model(objs=objs, triples=triples, obj_to_img=obj_to_img,
+            boxes_gt=boxes, masks_gt=None, style_img=style_img)
+      imgs, boxes_pred, masks_pred, predicate_scores = model_out
+      imgs = imagenet_deprocess_batch(imgs)
+      
+    for i in range(imgs.shape[0]):
+      img_np = imgs[i].cpu().numpy().transpose(1, 2, 0)
+      img_path = os.path.join(args.output_dir, stylized_output_file[i])
+      imwrite(img_path, img_np)
+    print(os.listdir(args.output_dir))
     
 
 def main(args):
@@ -205,33 +207,38 @@ def main(args):
   style_images = [f for f in os.listdir(args.style_image)]
   print(style_images)
   for style_image in style_images:
-      name = "_" + "style" + style_image[:-4]
-      style_image = Image.open(args.style_image + style_image)
-      with open(args.scene_graphs_json, 'r') as f:
-        scene_graphs = json.load(f)
-      transform = [Resize((64,64)), T.ToTensor(), imagenet_preprocess()]
-      transform = T.Compose(transform)
-      style_image = transform(style_image.convert('RGB')) 
-      style_image = torch.unsqueeze(style_image, 0)  
+    name = "_" + "style" + style_image[:-4]
+    style_image = Image.open(args.style_image + style_image)
+    with open(args.scene_graphs_json, 'r') as f:
+      scene_graphs = json.load(f)
+    transform = [Resize((64,64)), T.ToTensor(), imagenet_preprocess()]
+    transform = T.Compose(transform)
+    style_image = transform(style_image.convert('RGB')) 
+    style_image = torch.unsqueeze(style_image, 0)  
 
-      style_image = style_image.to(device)
-      # Run the model forward
-      with torch.no_grad():
-        imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_img=style_image)
-      imgs = imagenet_deprocess_batch(imgs)
+    style_image = style_image.to(device)
+    if args.inject_noise:
+      style_image = torch.randn_like(style_image)
+    # Run the model forward
+    with torch.no_grad():
+      imgs, boxes_pred, masks_pred, _ = model.forward_json(scene_graphs, style_img=style_image)
+    imgs = imagenet_deprocess_batch(imgs)
 
-      # Save the generated images
-      for i in range(imgs.shape[0]):
-        img_np = imgs[i].numpy().transpose(1, 2, 0)
-        img_path = os.path.join(args.output_dir, f'img00000{i}' + name + '.png')
-        imwrite(img_path, img_np)
+    # Save the generated images
+    for i in range(imgs.shape[0]):
+      img_np = imgs[i].numpy().transpose(1, 2, 0)
+      img_path = os.path.join(args.output_dir, f'img00000{i}' + name + '.png')
+      imwrite(img_path, img_np)
 
-      # Draw the scene graphs
-      if args.draw_scene_graphs == 1:
-        for i, sg in enumerate(scene_graphs):
-          sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
-          sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
-          imwrite(sg_img_path, sg_img)
+    # Draw the scene graphs
+    if args.draw_scene_graphs == 1:
+      for i, sg in enumerate(scene_graphs):
+        sg_img = vis.draw_scene_graph(sg['objects'], sg['relationships'])
+        sg_img_path = os.path.join(args.output_dir, 'sg%06d.png' % i)
+        imwrite(sg_img_path, sg_img)
+    
+    if args.inject_noise:
+      break
 
 
 if __name__ == '__main__':
